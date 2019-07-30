@@ -1,8 +1,10 @@
-Index: hostapd-2.1/src/tls/x509v3.c
-===================================================================
---- hostapd-2.1.orig/src/tls/x509v3.c
-+++ hostapd-2.1/src/tls/x509v3.c
-@@ -1847,11 +1847,15 @@ int x509_certificate_chain_validate(stru
+--- a/src/tls/x509v3.c
++++ b/src/tls/x509v3.c
+@@ -1843,19 +1843,23 @@ int x509_certificate_chain_validate(stru
+ 	for (cert = chain, idx = 0; cert; cert = cert->next, idx++) {
+ 		x509_name_string(&cert->subject, buf, sizeof(buf)); 
+ 		wpa_printf(MSG_DEBUG, "X509: %lu: %s", idx, buf);
+ 
  		if (chain_trusted)
  			continue;
  
@@ -22,3 +24,7 @@ Index: hostapd-2.1/src/tls/x509v3.c
  			wpa_printf(MSG_INFO, "X509: Certificate not valid "
  				   "(now=%lu not_before=%lu not_after=%lu)",
  				   now.sec, cert->not_before, cert->not_after);
+ 			*reason = X509_VALIDATE_CERTIFICATE_EXPIRED;
+ 			return -1;
+ 		}
+ 

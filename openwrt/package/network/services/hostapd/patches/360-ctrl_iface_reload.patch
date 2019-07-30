@@ -1,6 +1,10 @@
 --- a/hostapd/ctrl_iface.c
 +++ b/hostapd/ctrl_iface.c
-@@ -36,6 +36,7 @@
+@@ -32,24 +32,26 @@
+ #include "ap/ap_drv_ops.h"
+ #include "ap/wnm_ap.h"
+ #include "ap/wpa_auth.h"
+ #include "wps/wps_defs.h"
  #include "wps/wps.h"
  #include "config_file.h"
  #include "ctrl_iface.h"
@@ -8,7 +12,10 @@
  
  
  struct wpa_ctrl_dst {
-@@ -46,6 +47,7 @@ struct wpa_ctrl_dst {
+ 	struct wpa_ctrl_dst *next;
+ 	struct sockaddr_un addr;
+ 	socklen_t addrlen;
+ 	int debug_level;
  	int errors;
  };
  
@@ -16,7 +23,15 @@
  
  static void hostapd_ctrl_iface_send(struct hostapd_data *hapd, int level,
  				    const char *buf, size_t len);
-@@ -155,6 +157,68 @@ static int hostapd_ctrl_iface_new_sta(st
+ 
+ 
+ static int hostapd_ctrl_iface_attach(struct hostapd_data *hapd,
+ 				     struct sockaddr_un *from,
+@@ -151,14 +153,76 @@ static int hostapd_ctrl_iface_new_sta(st
+ 	if (sta == NULL)
+ 		return -1;
+ 
+ 	hostapd_new_assoc_sta(hapd, sta, 0);
  	return 0;
  }
  
@@ -85,7 +100,15 @@
  
  #ifdef CONFIG_IEEE80211W
  #ifdef NEED_AP_MLME
-@@ -1355,6 +1419,10 @@ static void hostapd_ctrl_iface_receive(i
+ static int hostapd_ctrl_iface_sa_query(struct hostapd_data *hapd,
+ 				       const char *txtaddr)
+ {
+ 	u8 addr[ETH_ALEN];
+@@ -1351,14 +1415,18 @@ static void hostapd_ctrl_iface_receive(i
+ 	} else if (os_strncmp(buf, "MGMT_TX ", 8) == 0) {
+ 		if (hostapd_ctrl_iface_mgmt_tx(hapd, buf + 8))
+ 			reply_len = -1;
+ #endif /* CONFIG_TESTING_OPTIONS */
  	} else if (os_strncmp(buf, "CHAN_SWITCH ", 12) == 0) {
  		if (hostapd_ctrl_iface_chan_switch(hapd, buf + 12))
  			reply_len = -1;
@@ -96,3 +119,7 @@
  	} else {
  		os_memcpy(reply, "UNKNOWN COMMAND\n", 16);
  		reply_len = 16;
+ 	}
+ 
+ 	if (reply_len < 0) {
+ 		os_memcpy(reply, "FAIL\n", 5);

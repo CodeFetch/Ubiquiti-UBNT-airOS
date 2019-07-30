@@ -1,0 +1,79 @@
+From aa63a21ce0b20dfe988e0bcdf14b8b930de20311 Mon Sep 17 00:00:00 2001
+From: Simon Kelley <simon@thekelleys.org.uk>
+Date: Mon, 22 Apr 2013 15:01:52 +0100
+Subject: [PATCH] Fix regression in dhcp_lease_time utility.
+
+---
+ contrib/wrt/dhcp_lease_time.c |  9 ++++++++-
+ src/rfc2131.c                 | 17 ++++++++++++++++-
+ 3 files changed, 33 insertions(+), 2 deletions(-)
+
+diff --git a/contrib/wrt/dhcp_lease_time.c b/contrib/wrt/dhcp_lease_time.c
+index 2866bb5..b438ef7 100644
+--- a/contrib/wrt/dhcp_lease_time.c
++++ b/contrib/wrt/dhcp_lease_time.c
+@@ -20,7 +20,7 @@
+    nothing is sent to stdout a message is sent to stderr and a
+    non-zero error code is returned.
+ 
+-   Requires dnsmasq 2.40 or later. 
++   This version requires dnsmasq 2.67 or later. 
+ */
+ 
+ #include <sys/types.h> 
+@@ -46,6 +46,7 @@
+ #define OPTION_LEASE_TIME        51
+ #define OPTION_OVERLOAD          52
+ #define OPTION_MESSAGE_TYPE      53
++#define OPTION_REQUESTED_OPTIONS 55
+ #define OPTION_END               255
+ #define DHCPINFORM               8
+ #define DHCP_SERVER_PORT         67
+@@ -167,6 +168,12 @@ int main(int argc, char **argv)
+   *(p++) = 1;
+   *(p++) = DHCPINFORM;
+ 
++  /* Explicity request the lease time, it won't be sent otherwise:
++     this is a dnsmasq extension, not standard. */
++  *(p++) = OPTION_REQUESTED_OPTIONS;
++  *(p++) = 1;
++  *(p++) = OPTION_LEASE_TIME;
++  
+   *(p++) = OPTION_END;
+  
+   dest.sin_family = AF_INET; 
+diff --git a/src/rfc2131.c b/src/rfc2131.c
+index 92974c0..013a446 100644
+--- a/src/rfc2131.c
++++ b/src/rfc2131.c
+@@ -39,6 +39,7 @@ static unsigned char *option_find(struct dhcp_packet *mess, size_t size, int opt
+ static unsigned char *option_find1(unsigned char *p, unsigned char *end, int opt, int minsize);
+ static size_t dhcp_packet_size(struct dhcp_packet *mess, unsigned char *agent_id, unsigned char *real_end);
+ static void clear_packet(struct dhcp_packet *mess, unsigned char *end);
++static int in_list(unsigned char *list, int opt);
+ static void do_options(struct dhcp_context *context,
+ 		       struct dhcp_packet *mess,
+ 		       unsigned char *real_end, 
+@@ -1410,7 +1411,21 @@ size_t dhcp_reply(struct dhcp_context *context, char *iface_name, int int_index,
+       clear_packet(mess, end);
+       option_put(mess, end, OPTION_MESSAGE_TYPE, 1, DHCPACK);
+       option_put(mess, end, OPTION_SERVER_IDENTIFIER, INADDRSZ, ntohl(server_id(context, override, fallback).s_addr));
+-      
++     
++      /* RFC 2131 says that DHCPINFORM shouldn't include lease-time parameters, but 
++	 we supply a utility which makes DHCPINFORM requests to get this information.
++	 Only include lease time if OPTION_LEASE_TIME is in the parameter request list,
++	 which won't be true for ordinary clients, but will be true for the 
++	 dhcp_lease_time utility. */
++      if (lease && in_list(req_options, OPTION_LEASE_TIME))
++	{
++	  if (lease->expires == 0)
++	    time = 0xffffffff;
++	  else
++	    time = (unsigned int)difftime(lease->expires, now);
++	  option_put(mess, end, OPTION_LEASE_TIME, 4, time);
++	}
++
+       do_options(context, mess, end, req_options, hostname, get_domain(mess->ciaddr),
+ 		 netid, subnet_addr, fqdn_flags, borken_opt, pxearch, uuid, vendor_class_len, now);
+       

@@ -1,6 +1,10 @@
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -14,6 +14,7 @@
+@@ -10,14 +10,15 @@
+ #ifndef CONFIG_NATIVE_WINDOWS
+ #include <syslog.h>
+ #include <grp.h>
+ #endif /* CONFIG_NATIVE_WINDOWS */
  
  #include "utils/common.h"
  #include "utils/eloop.h"
@@ -8,7 +12,15 @@
  #include "crypto/random.h"
  #include "crypto/tls.h"
  #include "common/version.h"
-@@ -535,7 +536,7 @@ int main(int argc, char *argv[])
+ #include "drivers/driver.h"
+ #include "eap_server/eap.h"
+ #include "eap_server/tncs.h"
+ #include "ap/hostapd.h"
+@@ -531,15 +532,15 @@ int main(int argc, char *argv[])
+ 	interfaces.driver_init = hostapd_driver_init;
+ 	interfaces.global_iface_path = NULL;
+ 	interfaces.global_iface_name = NULL;
+ 	interfaces.global_ctrl_sock = -1;
  
  	wpa_supplicant_event = hostapd_wpa_event;
  	for (;;) {
@@ -17,7 +29,15 @@
  		if (c < 0)
  			break;
  		switch (c) {
-@@ -572,6 +573,8 @@ int main(int argc, char *argv[])
+ 		case 'h':
+ 			usage();
+ 			break;
+ 		case 'd':
+@@ -568,14 +569,16 @@ int main(int argc, char *argv[])
+ 			break;
+ #ifdef CONFIG_DEBUG_LINUX_TRACING
+ 		case 'T':
+ 			enable_trace_dbg = 1;
  			break;
  #endif /* CONFIG_DEBUG_LINUX_TRACING */
  		case 'v':
@@ -25,6 +45,10 @@
 +				exit(!has_feature(optarg));
  			show_version();
  			exit(1);
+ 			break;
+ 		case 'g':
+ 			if (hostapd_get_global_ctrl_iface(&interfaces, optarg))
+ 				return -1;
  			break;
 --- /dev/null
 +++ b/src/utils/build_features.h
@@ -48,7 +72,11 @@
 +#endif /* BUILD_FEATURES_H */
 --- a/wpa_supplicant/main.c
 +++ b/wpa_supplicant/main.c
-@@ -12,6 +12,7 @@
+@@ -8,14 +8,15 @@
+ 
+ #include "includes.h"
+ #ifdef __linux__
+ #include <fcntl.h>
  #endif /* __linux__ */
  
  #include "common.h"
@@ -56,7 +84,15 @@
  #include "wpa_supplicant_i.h"
  #include "driver_i.h"
  #include "p2p_supplicant.h"
-@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
+ 
+ 
+ static void usage(void)
+ {
+@@ -166,15 +167,15 @@ int main(int argc, char *argv[])
+ 		return -1;
+ 	iface_count = 1;
+ 
+ 	wpa_supplicant_fd_workaround(1);
  
  	for (;;) {
  		c = getopt(argc, argv,
@@ -65,7 +101,15 @@
  		if (c < 0)
  			break;
  		switch (c) {
-@@ -268,8 +269,12 @@ int main(int argc, char *argv[])
+ 		case 'b':
+ 			iface->bridge_ifname = optarg;
+ 			break;
+ 		case 'B':
+@@ -264,16 +265,20 @@ int main(int argc, char *argv[])
+ 			break;
+ #ifdef CONFIG_DBUS
+ 		case 'u':
+ 			params.dbus_ctrl_interface = 1;
  			break;
  #endif /* CONFIG_DBUS */
  		case 'v':
@@ -80,3 +124,7 @@
  			goto out;
  		case 'W':
  			params.wait_for_monitor++;
+ 			break;
+ 		case 'N':
+ 			iface_count++;
+ 			iface = os_realloc_array(ifaces, iface_count,

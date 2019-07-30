@@ -1,0 +1,85 @@
+Index: hostapd-2.1/src/radius/radius_client.c
+===================================================================
+--- hostapd-2.1.orig/src/radius/radius_client.c
++++ hostapd-2.1/src/radius/radius_client.c
+@@ -307,8 +307,6 @@ static void radius_client_handle_send_er
+ 			       HOSTAPD_LEVEL_INFO,
+ 			       "Send failed - maybe interface status changed -"
+ 			       " try to connect again");
+-		eloop_unregister_read_sock(s);
+-		close(s);
+ 		if (msg_type == RADIUS_ACCT || msg_type == RADIUS_ACCT_INTERIM)
+ 			radius_client_init_acct(radius);
+ 		else
+@@ -353,6 +351,7 @@ static int radius_client_retransmit(stru
+ 
+ 	os_get_reltime(&entry->last_attempt);
+ 	buf = radius_msg_get_buf(entry->msg);
++
+ 	if (send(s, wpabuf_head(buf), wpabuf_len(buf), 0) < 0)
+ 		radius_client_handle_send_error(radius, s, entry->msg_type);
+ 
+@@ -1127,12 +1126,19 @@ static int radius_client_disable_pmtu_di
+ 	return r;
+ }
+ 
++static void radius_close_read_socket(int sock) {
++	if (sock >= 0) {
++		eloop_unregister_read_sock(sock);
++		close(sock);
++	}
++}
+ 
+ static int radius_client_init_auth(struct radius_client_data *radius)
+ {
+ 	struct hostapd_radius_servers *conf = radius->conf;
+ 	int ok = 0;
+ 
++	radius_close_read_socket(radius->auth_serv_sock);
+ 	radius->auth_serv_sock = socket(PF_INET, SOCK_DGRAM, 0);
+ 	if (radius->auth_serv_sock < 0)
+ 		wpa_printf(MSG_INFO, "RADIUS: socket[PF_INET,SOCK_DGRAM]: %s",
+@@ -1143,6 +1149,7 @@ static int radius_client_init_auth(struc
+ 	}
+ 
+ #ifdef CONFIG_IPV6
++	radius_close_read_socket(radius->auth_serv_sock6);
+ 	radius->auth_serv_sock6 = socket(PF_INET6, SOCK_DGRAM, 0);
+ 	if (radius->auth_serv_sock6 < 0)
+ 		wpa_printf(MSG_INFO, "RADIUS: socket[PF_INET6,SOCK_DGRAM]: %s",
+@@ -1185,6 +1192,7 @@ static int radius_client_init_acct(struc
+ 	struct hostapd_radius_servers *conf = radius->conf;
+ 	int ok = 0;
+ 
++	radius_close_read_socket(radius->acct_serv_sock);
+ 	radius->acct_serv_sock = socket(PF_INET, SOCK_DGRAM, 0);
+ 	if (radius->acct_serv_sock < 0)
+ 		wpa_printf(MSG_INFO, "RADIUS: socket[PF_INET,SOCK_DGRAM]: %s",
+@@ -1195,6 +1203,7 @@ static int radius_client_init_acct(struc
+ 	}
+ 
+ #ifdef CONFIG_IPV6
++	radius_close_read_socket(radius->acct_serv_sock6);
+ 	radius->acct_serv_sock6 = socket(PF_INET6, SOCK_DGRAM, 0);
+ 	if (radius->acct_serv_sock6 < 0)
+ 		wpa_printf(MSG_INFO, "RADIUS: socket[PF_INET6,SOCK_DGRAM]: %s",
+@@ -1285,15 +1294,11 @@ void radius_client_deinit(struct radius_
+ 	if (!radius)
+ 		return;
+ 
+-	if (radius->auth_serv_sock >= 0)
+-		eloop_unregister_read_sock(radius->auth_serv_sock);
+-	if (radius->acct_serv_sock >= 0)
+-		eloop_unregister_read_sock(radius->acct_serv_sock);
++	radius_close_read_socket(radius->auth_serv_sock);
++	radius_close_read_socket(radius->acct_serv_sock);
+ #ifdef CONFIG_IPV6
+-	if (radius->auth_serv_sock6 >= 0)
+-		eloop_unregister_read_sock(radius->auth_serv_sock6);
+-	if (radius->acct_serv_sock6 >= 0)
+-		eloop_unregister_read_sock(radius->acct_serv_sock6);
++	radius_close_read_socket(radius->auth_serv_sock6);
++	radius_close_read_socket(radius->acct_serv_sock6);
+ #endif /* CONFIG_IPV6 */
+ 
+ 	eloop_cancel_timeout(radius_retry_primary_timer, radius, NULL);

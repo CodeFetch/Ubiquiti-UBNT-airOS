@@ -46,7 +46,7 @@
  			}
  #if defined(UPNP_STRICT) || defined(DELAY_MSEARCH_RESPONSE)
  			else if((i < n - 3) && (strncasecmp(bufr+i, "mx:", 3) == 0))
-@@ -870,13 +870,13 @@
+@@ -911,13 +911,13 @@
  				while((*mx == ' ' || *mx == '\t') && (mx < bufr + n))
  					mx++;
  				while(mx[mx_len]!='\r' && mx[mx_len]!='\n'
@@ -56,11 +56,11 @@
 -				syslog(LOG_DEBUG, "MX: %.*s (value=%d)", mx_len, mx, mx_value);
 +				MY_LOG_DEBUG("MX: %.*s (value=%d)", mx_len, mx, mx_value);
  			}
- #endif
- 		}
- #ifdef UPNP_STRICT
- 		/* For multicast M-SEARCH requests, if the search request does
- 		 * not contain an MX header field, the device MUST silently
+ #endif /* defined(UPNP_STRICT) || defined(DELAY_MSEARCH_RESPONSE) */
+ #if defined(UPNP_STRICT)
+ 			/* Fix UDA-1.2.10 Man header empty or invalid */
+ 			else if((i < n - 4) && (strncasecmp(bufr+i, "man:", 3) == 0))
+ 			{
 --- a/miniupnpd.c
 +++ b/miniupnpd.c
 @@ -1591,13 +1591,13 @@
@@ -355,7 +355,7 @@
  			else if(strncasecmp(line, "Callback:", 9)==0)
  			{
  				/* The Callback can contain several urls :
-@@ -602,17 +602,17 @@
+@@ -603,17 +603,17 @@
  }
  
  static void
@@ -370,12 +370,12 @@
  	       h->req_Timeout);
 -	syslog(LOG_DEBUG, "SID '%.*s'", h->req_SIDLen, h->req_buf + h->req_SIDOff);
 +	MY_LOG_DEBUG("SID '%.*s'", h->req_SIDLen, h->req_buf + h->req_SIDOff);
- 	if((h->req_CallbackOff <= 0) && (h->req_SIDOff <= 0)) {
- 		/* Missing or invalid CALLBACK : 412 Precondition Failed.
- 		 * If CALLBACK header is missing or does not contain a valid HTTP URL,
- 		 * the publisher must respond with HTTP error 412 Precondition Failed*/
- 		BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
- 		SendRespAndClose_upnphttp(h);
+ #if defined(UPNP_STRICT) && (UPNP_VERSION_MAJOR > 1) || (UPNP_VERSION_MINOR > 0)
+ 	/*if(h->req_Timeout < 1800) {*/
+ 	if(h->req_Timeout == 0) {
+ 		/* Second-infinite is forbidden with UDA v1.1 and later :
+ 		 * (UDA 1.1 : 4.1.1 Subscription)
+ 		 * UPnP 1.1 control points MUST NOT subscribe using keyword infinite,
 @@ -639,13 +639,13 @@
  #endif
  			if(checkCallbackURL(h)) {

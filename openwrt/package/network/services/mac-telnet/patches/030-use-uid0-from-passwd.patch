@@ -1,0 +1,31 @@
+Index: mac-telnet-2016-10-11/src/mactelnetd.c
+===================================================================
+--- mac-telnet-2016-10-11.orig/src/mactelnetd.c
++++ mac-telnet-2016-10-11/src/mactelnetd.c
+@@ -487,7 +487,7 @@ static void user_login(struct mt_connect
+ 			abort_connection(curconn, pkthdr, _("System error, out of memory\r\n"));
+ 			return;
+ 		}
+-
++#if 0
+ 		if (getpwnam_r(curconn->username, user, buffer, 1024, &tmpuser) != 0) {
+ 			syslog(LOG_WARNING, _("(%d) Login ok, but local user not accessible (%s)."), curconn->seskey, curconn->username);
+ 			/*_ Please include both \r and \n in translation, this is needed for the terminal emulator. */
+@@ -496,6 +496,17 @@ static void user_login(struct mt_connect
+ 			free(buffer);
+ 			return;
+ 		}
++#else
++		if ((getpwuid_r(0, user, buffer, 1024, &tmpuser) != 0) || (tmpuser == NULL)) {
++			syslog(LOG_WARNING, _("(%d) Login ok, but local user not accessible (%s)."), curconn->seskey, curconn->username);
++			/*_ Please include both \r and \n in translation, this is needed for the terminal emulator. */
++			abort_connection(curconn, pkthdr, _("Local user not accessible\r\n"));
++			free(user);
++			free(buffer);
++			return;
++		}
++                strncpy(user->pw_name, curconn->username, sizeof(user->pw_name));
++#endif
+ 
+ 		/* Change the owner of the slave pts */
+ 		chown(slavename, user->pw_uid, user->pw_gid);

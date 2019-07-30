@@ -1,0 +1,95 @@
+--- a/src/ap/ieee802_1x.c
++++ b/src/ap/ieee802_1x.c
+@@ -2109,15 +2109,15 @@ int ieee802_1x_get_mib_sta(struct hostap
+ 
+ static void ieee802_1x_finished(struct hostapd_data *hapd,
+ 				struct sta_info *sta, int success)
+ {
+ 	const u8 *key;
+ 	size_t len;
+ 	/* TODO: get PMKLifetime from WPA parameters */
+-	static const int dot11RSNAConfigPMKLifetime = 43200;
++	static const int dot11RSNAConfigPMKLifetime = 31536000;
+ 
+ 	key = ieee802_1x_get_key(sta->eapol_sm, &len);
+ 	if (success && key && len >= PMK_LEN &&
+ 	    wpa_auth_pmksa_add(sta->wpa_sm, key, sta->sessionTimeout ?
+                                sta->sessionTimeout : dot11RSNAConfigPMKLifetime,
+ 			       sta->eapol_sm) == 0) {
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_WPA,
+--- a/src/ap/pmksa_cache_auth.c
++++ b/src/ap/pmksa_cache_auth.c
+@@ -14,15 +14,15 @@
+ #include "eapol_auth/eapol_auth_sm_i.h"
+ #include "sta_info.h"
+ #include "ap_config.h"
+ #include "pmksa_cache_auth.h"
+ 
+ 
+ static const int pmksa_cache_max_entries = 1024;
+-static const int dot11RSNAConfigPMKLifetime = 43200;
++static const int dot11RSNAConfigPMKLifetime = 31536000;
+ 
+ struct rsn_pmksa_cache {
+ #define PMKID_HASH_SIZE 128
+ #define PMKID_HASH(pmkid) (unsigned int) ((pmkid)[0] & 0x7f)
+ 	struct rsn_pmksa_cache_entry *pmkid[PMKID_HASH_SIZE];
+ 	struct rsn_pmksa_cache_entry *pmksa;
+ 	int pmksa_count;
+--- a/src/ap/preauth_auth.c
++++ b/src/ap/preauth_auth.c
+@@ -23,15 +23,15 @@
+ #include "wpa_auth.h"
+ #include "preauth_auth.h"
+ 
+ #ifndef ETH_P_PREAUTH
+ #define ETH_P_PREAUTH 0x88C7 /* IEEE 802.11i pre-authentication */
+ #endif /* ETH_P_PREAUTH */
+ 
+-static const int dot11RSNAConfigPMKLifetime = 43200;
++static const int dot11RSNAConfigPMKLifetime = 31536000;
+ 
+ struct rsn_preauth_interface {
+ 	struct rsn_preauth_interface *next;
+ 	struct hostapd_data *hapd;
+ 	struct l2_packet_data *l2;
+ 	char *ifname;
+ 	int ifindex;
+--- a/src/ap/wpa_auth.c
++++ b/src/ap/wpa_auth.c
+@@ -46,15 +46,15 @@ static int wpa_group_config_group_keys(s
+ static const u32 dot11RSNAConfigGroupUpdateCount = 4;
+ static const u32 dot11RSNAConfigPairwiseUpdateCount = 4;
+ static const u32 eapol_key_timeout_first = 100; /* ms */
+ static const u32 eapol_key_timeout_subseq = 1000; /* ms */
+ static const u32 eapol_key_timeout_first_group = 500; /* ms */
+ 
+ /* TODO: make these configurable */
+-static const int dot11RSNAConfigPMKLifetime = 43200;
++static const int dot11RSNAConfigPMKLifetime = 31536000;
+ static const int dot11RSNAConfigPMKReauthThreshold = 70;
+ static const int dot11RSNAConfigSATimeout = 60;
+ 
+ 
+ static inline int wpa_auth_mic_failure_report(
+ 	struct wpa_authenticator *wpa_auth, const u8 *addr)
+ {
+--- a/src/rsn_supp/wpa.c
++++ b/src/rsn_supp/wpa.c
+@@ -2027,15 +2027,15 @@ struct wpa_sm * wpa_sm_init(struct wpa_s
+ 	sm = os_zalloc(sizeof(*sm));
+ 	if (sm == NULL)
+ 		return NULL;
+ 	dl_list_init(&sm->pmksa_candidates);
+ 	sm->renew_snonce = 1;
+ 	sm->ctx = ctx;
+ 
+-	sm->dot11RSNAConfigPMKLifetime = 43200;
++	sm->dot11RSNAConfigPMKLifetime = 31536000;
+ 	sm->dot11RSNAConfigPMKReauthThreshold = 70;
+ 	sm->dot11RSNAConfigSATimeout = 60;
+ 
+ 	sm->pmksa = pmksa_cache_init(wpa_sm_pmksa_free_cb, sm, sm);
+ 	if (sm->pmksa == NULL) {
+ 		wpa_msg(sm->ctx->msg_ctx, MSG_ERROR,
+ 			"RSN: PMKSA cache initialization failed");

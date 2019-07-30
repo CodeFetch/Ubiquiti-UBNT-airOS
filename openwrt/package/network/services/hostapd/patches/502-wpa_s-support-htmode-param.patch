@@ -16,7 +16,11 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
 
 --- a/src/drivers/driver.h
 +++ b/src/drivers/driver.h
-@@ -418,6 +418,8 @@ struct wpa_driver_associate_params {
+@@ -414,14 +414,16 @@ struct wpa_driver_associate_params {
+ 	 */
+ 	size_t ssid_len;
+ 
+ 	int beacon_interval;
  	int fixed_freq;
  	unsigned char rates[NL80211_MAX_SUPP_RATES];
  	int mcast_rate;
@@ -25,9 +29,17 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
  
  	/**
  	 * freq - Frequency of the channel the selected AP is using
+ 	 * Frequency that the selected AP is using (in MHz as
+ 	 * reported in the scan results)
+ 	 */
+ 	int freq;
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8368,6 +8368,22 @@ retry:
+@@ -8364,14 +8364,30 @@ retry:
+ 
+ 	if (params->mcast_rate > 0) {
+ 		wpa_printf(MSG_DEBUG, "  * mcast_rates=%.1f",
+ 			   (double)params->mcast_rate / 10);
  		NLA_PUT_U32(msg, NL80211_ATTR_MCAST_RATE, params->mcast_rate);
  	}
  
@@ -50,9 +62,17 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
  	ret = nl80211_set_conn_keys(params, msg);
  	if (ret)
  		goto nla_put_failure;
+ 
+ 	if (params->bssid && params->fixed_bssid) {
+ 		wpa_printf(MSG_DEBUG, "  * BSSID=" MACSTR,
+ 			   MAC2STR(params->bssid));
 --- a/wpa_supplicant/config.c
 +++ b/wpa_supplicant/config.c
-@@ -1545,6 +1545,71 @@ static char * wpa_config_write_mcast_rat
+@@ -1541,14 +1541,79 @@ static char * wpa_config_write_mcast_rat
+ 		os_free(value);
+ 		return NULL;
+ 	}
+ 	return value;
  }
  #endif /* NO_CONFIG_WRITE */
  
@@ -124,7 +144,15 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
  static int wpa_config_parse_rates(const struct parse_data *data,
  				  struct wpa_ssid *ssid, int line,
  				  const char *value)
-@@ -1811,6 +1876,7 @@ static const struct parse_data ssid_fiel
+ {
+ 	int i;
+ 	char *pos, *r, *sptr, *end;
+ 	double rate;
+@@ -1807,14 +1872,15 @@ static const struct parse_data ssid_fiel
+ #endif /* CONFIG_VHT_OVERRIDES */
+ 	{ INT(ap_max_inactivity) },
+ 	{ INT(dtim_period) },
+ 	{ INT(beacon_int) },
  	{ INT_RANGE(fixed_freq, 0, 1) },
  	{ FUNC(rates) },
  	{ FUNC(mcast_rate) },
@@ -132,9 +160,17 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
  };
  
  #undef OFFSET
+ #undef _STR
+ #undef STR
+ #undef STR_KEY
+ #undef _STR_LEN
 --- a/wpa_supplicant/config_ssid.h
 +++ b/wpa_supplicant/config_ssid.h
-@@ -626,6 +626,8 @@ struct wpa_ssid {
+@@ -622,10 +622,12 @@ struct wpa_ssid {
+ 	 * dereferences since it may not be updated in all cases.
+ 	 */
+ 	void *parent_cred;
+ 
  	int fixed_freq;
  	unsigned char rates[NL80211_MAX_SUPP_RATES];
  	double mcast_rate;
@@ -145,7 +181,11 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
  #endif /* CONFIG_SSID_H */
 --- a/wpa_supplicant/wpa_supplicant.c
 +++ b/wpa_supplicant/wpa_supplicant.c
-@@ -1767,6 +1767,8 @@ static void wpas_start_assoc_cb(struct w
+@@ -1800,14 +1800,16 @@ static void wpas_start_assoc_cb(struct w
+ 	params.fixed_freq = ssid->fixed_freq;
+ 	i = 0;
+ 	while (i < NL80211_MAX_SUPP_RATES) {
+ 		params.rates[i] = ssid->rates[i];
  		i++;
  	}
  	params.mcast_rate = ssid->mcast_rate;
@@ -154,3 +194,7 @@ Signed-off-by: Antonio Quartulli <ordex@autistici.org>
  	params.wpa_ie = wpa_ie;
  	params.wpa_ie_len = wpa_ie_len;
  	params.pairwise_suite = cipher_pairwise;
+ 	params.group_suite = cipher_group;
+ 	params.key_mgmt_suite = wpa_s->key_mgmt;
+ 	params.wpa_proto = wpa_s->wpa_proto;
+ 	params.auth_alg = algs;

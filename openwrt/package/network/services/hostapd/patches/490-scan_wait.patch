@@ -1,6 +1,10 @@
 --- a/hostapd/main.c
 +++ b/hostapd/main.c
-@@ -35,6 +35,8 @@ struct hapd_global {
+@@ -31,14 +31,16 @@
+ 
+ struct hapd_global {
+ 	void **drv_priv;
+ 	size_t drv_count;
  };
  
  static struct hapd_global global;
@@ -9,7 +13,15 @@
  
  
  #ifndef CONFIG_NO_HOSTAPD_LOGGER
-@@ -139,6 +141,14 @@ static void hostapd_logger_cb(void *ctx,
+ static void hostapd_logger_cb(void *ctx, const u8 *addr, unsigned int module,
+ 			      int level, const char *txt, size_t len)
+ {
+ 	struct hostapd_data *hapd = ctx;
+@@ -135,14 +137,22 @@ static void hostapd_logger_cb(void *ctx,
+ 	}
+ #endif /* CONFIG_NATIVE_WINDOWS */
+ 
+ 	os_free(format);
  }
  #endif /* CONFIG_NO_HOSTAPD_LOGGER */
  
@@ -24,7 +36,15 @@
  
  /**
   * hostapd_driver_init - Preparate driver interface
-@@ -157,6 +167,8 @@ static int hostapd_driver_init(struct ho
+  */
+ static int hostapd_driver_init(struct hostapd_iface *iface)
+ {
+ 	struct wpa_init_params params;
+@@ -153,14 +163,16 @@ static int hostapd_driver_init(struct ho
+ 	struct wpa_driver_capa capa;
+ 
+ 	if (hapd->driver == NULL || hapd->driver->hapd_init == NULL) {
+ 		wpa_printf(MSG_ERROR, "No hostapd driver wrapper available");
  		return -1;
  	}
  
@@ -33,7 +53,15 @@
  	/* Initialize the driver interface */
  	if (!(b[0] | b[1] | b[2] | b[3] | b[4] | b[5]))
  		b = NULL;
-@@ -370,8 +382,6 @@ static void hostapd_global_deinit(const
+ 
+ 	os_memset(&params, 0, sizeof(params));
+ 	for (i = 0; wpa_drivers[i]; i++) {
+ 		if (wpa_drivers[i] != hapd->driver)
+@@ -366,16 +378,14 @@ static void hostapd_global_deinit(const
+ 	eloop_destroy();
+ 
+ #ifndef CONFIG_NATIVE_WINDOWS
+ 	closelog();
  #endif /* CONFIG_NATIVE_WINDOWS */
  
  	eap_server_unregister_methods();
@@ -42,7 +70,15 @@
  }
  
  
-@@ -397,11 +407,6 @@ static int hostapd_global_run(struct hap
+ static int hostapd_global_run(struct hapd_interfaces *ifaces, int daemonize,
+ 			      const char *pid_file)
+ {
+ #ifdef EAP_SERVER_TNC
+@@ -393,19 +403,14 @@ static int hostapd_global_run(struct hap
+ 
+ 	if (tnc && tncs_global_init() < 0) {
+ 		wpa_printf(MSG_ERROR, "Failed to initialize TNCS");
+ 		return -1;
  	}
  #endif /* EAP_SERVER_TNC */
  
@@ -54,7 +90,15 @@
  	eloop_run();
  
  	return 0;
-@@ -510,8 +515,7 @@ int main(int argc, char *argv[])
+ }
+ 
+ 
+ static void show_version(void)
+@@ -506,16 +511,15 @@ void hostapd_wpa_event(void *ctx, enum w
+ 
+ 
+ int main(int argc, char *argv[])
+ {
  	struct hapd_interfaces interfaces;
  	int ret = 1;
  	size_t i, j;
@@ -64,3 +108,7 @@
  	const char *log_file = NULL;
  	const char *entropy_file = NULL;
  	char **bss_config = NULL, **tmp_bss;
+ 	size_t num_bss_configs = 0;
+ #ifdef CONFIG_DEBUG_LINUX_TRACING
+ 	int enable_trace_dbg = 0;
+ #endif /* CONFIG_DEBUG_LINUX_TRACING */

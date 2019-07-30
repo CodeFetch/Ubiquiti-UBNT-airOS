@@ -1,6 +1,10 @@
 --- a/src/drivers/drivers.mak
 +++ b/src/drivers/drivers.mak
-@@ -25,7 +25,6 @@ NEED_SME=y
+@@ -21,15 +21,14 @@ ifdef CONFIG_DRIVER_NL80211
+ DRV_CFLAGS += -DCONFIG_DRIVER_NL80211
+ DRV_OBJS += ../src/drivers/driver_nl80211.o
+ DRV_OBJS += ../src/utils/radiotap.o
+ NEED_SME=y
  NEED_AP_MLME=y
  NEED_NETLINK=y
  NEED_LINUX_IOCTL=y
@@ -8,7 +12,15 @@
  
  ifdef CONFIG_LIBNL32
    DRV_LIBS += -lnl-3
-@@ -109,7 +108,6 @@ DRV_WPA_CFLAGS += -DCONFIG_DRIVER_WEXT
+   DRV_LIBS += -lnl-genl-3
+   DRV_CFLAGS += -DCONFIG_LIBNL20 -I/usr/include/libnl3
+ else
+   ifdef CONFIG_LIBNL_TINY
+@@ -105,15 +104,14 @@ endif
+ ##### PURE CLIENT DRIVERS
+ 
+ ifdef CONFIG_DRIVER_WEXT
+ DRV_WPA_CFLAGS += -DCONFIG_DRIVER_WEXT
  CONFIG_WIRELESS_EXTENSION=y
  NEED_NETLINK=y
  NEED_LINUX_IOCTL=y
@@ -16,7 +28,15 @@
  endif
  
  ifdef CONFIG_DRIVER_NDIS
-@@ -135,7 +133,6 @@ endif
+ DRV_WPA_CFLAGS += -DCONFIG_DRIVER_NDIS
+ DRV_WPA_OBJS += ../src/drivers/driver_ndis.o
+ ifdef CONFIG_NDIS_EVENTS_INTEGRATED
+ DRV_WPA_OBJS += ../src/drivers/driver_ndis_.o
+@@ -131,27 +129,27 @@ ifdef CONFIG_DRIVER_ROBOSWITCH
+ DRV_WPA_CFLAGS += -DCONFIG_DRIVER_ROBOSWITCH
+ DRV_WPA_OBJS += ../src/drivers/driver_roboswitch.o
+ endif
+ 
  ifdef CONFIG_WIRELESS_EXTENSION
  DRV_WPA_CFLAGS += -DCONFIG_WIRELESS_EXTENSION
  DRV_WPA_OBJS += ../src/drivers/driver_wext.o
@@ -24,7 +44,12 @@
  endif
  
  ifdef NEED_NETLINK
-@@ -148,6 +145,7 @@ endif
+ DRV_OBJS += ../src/drivers/netlink.o
+ endif
+ 
+ ifdef NEED_LINUX_IOCTL
+ DRV_OBJS += ../src/drivers/linux_ioctl.o
+ endif
  
  ifdef NEED_RFKILL
  DRV_OBJS += ../src/drivers/rfkill.o
@@ -32,9 +57,17 @@
  endif
  
  ifdef CONFIG_VLAN_NETLINK
+ ifdef CONFIG_FULL_DYNAMIC_VLAN
+ ifdef CONFIG_LIBNL32
+   DRV_LIBS += -lnl-3
+   DRV_LIBS += -lnl-genl-3
 --- a/src/drivers/rfkill.h
 +++ b/src/drivers/rfkill.h
-@@ -18,8 +18,24 @@ struct rfkill_config {
+@@ -14,12 +14,28 @@ struct rfkill_data;
+ struct rfkill_config {
+ 	void *ctx;
+ 	char ifname[IFNAMSIZ];
+ 	void (*blocked_cb)(void *ctx);
  	void (*unblocked_cb)(void *ctx);
  };
  

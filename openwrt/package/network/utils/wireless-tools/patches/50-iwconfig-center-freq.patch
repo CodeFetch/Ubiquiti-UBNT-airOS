@@ -1,6 +1,10 @@
 --- a/iwconfig.c
 +++ b/iwconfig.c
-@@ -385,6 +385,13 @@ display_info(struct wireless_info *	info
+@@ -381,14 +381,22 @@ display_info(struct wireless_info *	info
+ 	}
+     }
+ 
+   /* Formating */
    if(tokens > 0)
      printf("\n          ");
  
@@ -8,13 +12,22 @@
 +  if(info->b.center1_freq)
 +    {
 +      iw_print_freq_value(buffer, sizeof(buffer), info->b.center1_freq);
-+      printf("Center1-Freq: %s\n", buffer);
++      printf("Center1-Freq: %s", buffer);
++      printf("\n          ");
 +	}
 +
    /* Display encryption information */
    /* Note : we display only the "current" key, use iwlist to list all keys */
    if(info->b.has_key)
-@@ -806,6 +813,48 @@ set_freq_info(int		skfd,
+     {
+       printf("Encryption key:");
+       if((info->b.key_flags & IW_ENCODE_DISABLED) || (info->b.key_size == 0))
+ 	printf("off");
+@@ -802,14 +810,56 @@ set_freq_info(int		skfd,
+ 
+   /* Var args */
+   return(i);
+ }
  
  /*------------------------------------------------------------------*/
  /*
@@ -63,7 +76,15 @@
   * Set Bit Rate
   */
  static int
-@@ -1708,6 +1757,8 @@ static const struct iwconfig_entry iwcon
+ set_bitrate_info(int		skfd,
+ 		 char *		ifname,
+ 		 char *		args[],		/* Command line args */
+ 		 int		count)		/* Args count */
+@@ -1704,14 +1754,16 @@ static const struct iwconfig_entry iwcon
+ 	"Set ESSID",			"{NNN|any|on|off}" },
+   { "mode",		set_mode_info,		1,	SIOCSIWMODE,
+ 	"Set Mode",			"{managed|ad-hoc|master|...}" },
+   { "freq",		set_freq_info,		1,	SIOCSIWFREQ,
  	"Set Frequency",		"N.NNN[k|M|G]" },
    { "channel",		set_freq_info,		1,	SIOCSIWFREQ,
  	"Set Frequency",		"N" },
@@ -72,9 +93,17 @@
    { "bit",		set_bitrate_info,	1,	SIOCSIWRATE,
  	"Set Bit Rate",			"{N[k|M|G]|auto|fixed}" },
    { "rate",		set_bitrate_info,	1,	SIOCSIWRATE,
+ 	"Set Bit Rate",			"{N[k|M|G]|auto|fixed}" },
+   { "enc",		set_enc_info,		1,	SIOCSIWENCODE,
+ 	"Set Encode",			"{NNNN-NNNN|off}" },
+   { "key",		set_enc_info,		1,	SIOCSIWENCODE,
 --- a/iwlib.c
 +++ b/iwlib.c
-@@ -702,6 +702,12 @@ iw_get_basic_config(int			skfd,
+@@ -698,14 +698,20 @@ iw_get_basic_config(int			skfd,
+   /* Get frequency / channel */
+   if(iw_get_ext(skfd, ifname, SIOCGIWFREQ, &wrq) >= 0)
+     {
+       info->has_freq = 1;
        info->freq = iw_freq2float(&(wrq.u.freq));
        info->freq_flags = wrq.u.freq.flags;
      }
@@ -87,9 +116,17 @@
  
    /* Get encryption information */
    wrq.u.data.pointer = (caddr_t) info->key;
+   wrq.u.data.length = IW_ENCODING_TOKEN_MAX;
+   wrq.u.data.flags = 0;
+   if(iw_get_ext(skfd, ifname, SIOCGIWENCODE, &wrq) >= 0)
+     {
 --- a/iwlib.h
 +++ b/iwlib.h
-@@ -177,6 +177,7 @@ typedef struct wireless_config
+@@ -173,14 +173,15 @@ typedef struct wireless_config
+ {
+   char		name[IFNAMSIZ + 1];	/* Wireless/protocol name */
+   int		has_nwid;
+   iwparam	nwid;			/* Network ID */
    int		has_freq;
    double	freq;			/* Frequency/channel */
    int		freq_flags;
@@ -97,3 +134,7 @@
    int		has_key;
    unsigned char	key[IW_ENCODING_TOKEN_MAX];	/* Encoding key used */
    int		key_size;		/* Number of bytes */
+   int		key_flags;		/* Various flags */
+   int		has_essid;
+   int		essid_on;
+   char		essid[IW_ESSID_MAX_SIZE + 1];	/* ESSID (extended network) */

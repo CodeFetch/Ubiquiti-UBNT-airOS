@@ -1501,7 +1501,11 @@
 +};
 --- a/src/drivers/drivers.c
 +++ b/src/drivers/drivers.c
-@@ -16,6 +16,9 @@ void (*wpa_supplicant_event)(void *ctx,
+@@ -12,14 +12,17 @@
+ 
+ void (*wpa_supplicant_event)(void *ctx, enum wpa_event_type event,
+ 			     union wpa_event_data *data);
+ 
  #ifdef CONFIG_DRIVER_WEXT
  extern struct wpa_driver_ops wpa_driver_wext_ops; /* driver_wext.c */
  #endif /* CONFIG_DRIVER_WEXT */
@@ -1511,7 +1515,15 @@
  #ifdef CONFIG_DRIVER_NL80211
  extern struct wpa_driver_ops wpa_driver_nl80211_ops; /* driver_nl80211.c */
  #endif /* CONFIG_DRIVER_NL80211 */
-@@ -60,6 +63,9 @@ struct wpa_driver_ops *wpa_drivers[] =
+ #ifdef CONFIG_DRIVER_HOSTAP
+ extern struct wpa_driver_ops wpa_driver_hostap_ops; /* driver_hostap.c */
+ #endif /* CONFIG_DRIVER_HOSTAP */
+ #ifdef CONFIG_DRIVER_MADWIFI
+@@ -56,14 +59,17 @@ struct wpa_driver_ops *wpa_drivers[] =
+ {
+ #ifdef CONFIG_DRIVER_NL80211
+ 	&wpa_driver_nl80211_ops,
+ #endif /* CONFIG_DRIVER_NL80211 */
  #ifdef CONFIG_DRIVER_WEXT
  	&wpa_driver_wext_ops,
  #endif /* CONFIG_DRIVER_WEXT */
@@ -1521,9 +1533,17 @@
  #ifdef CONFIG_DRIVER_HOSTAP
  	&wpa_driver_hostap_ops,
  #endif /* CONFIG_DRIVER_HOSTAP */
+ #ifdef CONFIG_DRIVER_MADWIFI
+ 	&wpa_driver_madwifi_ops,
+ #endif /* CONFIG_DRIVER_MADWIFI */
+ #ifdef CONFIG_DRIVER_BSD
 --- a/src/drivers/drivers.mak
 +++ b/src/drivers/drivers.mak
-@@ -101,6 +101,15 @@ NEED_NETLINK=y
+@@ -97,14 +97,23 @@ ifdef CONFIG_DRIVER_ATHEROS
+ DRV_AP_CFLAGS += -DCONFIG_DRIVER_ATHEROS
+ DRV_AP_OBJS += ../src/drivers/driver_atheros.o
+ CONFIG_L2_PACKET=linux
+ NEED_NETLINK=y
  NEED_LINUX_IOCTL=y
  endif
  
@@ -1539,9 +1559,17 @@
  ##### PURE CLIENT DRIVERS
  
  ifdef CONFIG_DRIVER_WEXT
+ DRV_WPA_CFLAGS += -DCONFIG_DRIVER_WEXT
+ CONFIG_WIRELESS_EXTENSION=y
+ NEED_NETLINK=y
+ NEED_LINUX_IOCTL=y
 --- a/src/drivers/drivers.mk
 +++ b/src/drivers/drivers.mk
-@@ -102,6 +102,15 @@ NEED_NETLINK=y
+@@ -98,14 +98,23 @@ ifdef CONFIG_DRIVER_ATHEROS
+ DRV_AP_CFLAGS += -DCONFIG_DRIVER_ATHEROS
+ DRV_AP_OBJS += src/drivers/driver_atheros.c
+ CONFIG_L2_PACKET=linux
+ NEED_NETLINK=y
  NEED_LINUX_IOCTL=y
  endif
  
@@ -1557,3 +1585,7 @@
  ##### PURE CLIENT DRIVERS
  
  ifdef CONFIG_DRIVER_WEXT
+ DRV_WPA_CFLAGS += -DCONFIG_DRIVER_WEXT
+ CONFIG_WIRELESS_EXTENSION=y
+ NEED_NETLINK=y
+ NEED_LINUX_IOCTL=y

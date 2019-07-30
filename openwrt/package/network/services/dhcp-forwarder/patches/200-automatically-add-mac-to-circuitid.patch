@@ -1,0 +1,41 @@
+--- a/src/cfg.c
++++ b/src/cfg.c
+@@ -200,12 +200,21 @@ fillInterfaceInfo(struct InterfaceInfoLi
+ 
+     if (!ifinfo->need_mac) ifinfo->if_maclen = 0;
+     else {
+       if (ioctl(fd, SIOCGIFHWADDR, &iface)==-1) goto err;
+       sockaddrToHwAddr(&iface.ifr_hwaddr,
+ 		       ifinfo->if_mac, &ifinfo->if_maclen);
++      if (!strcmp(ifinfo->aid, "_mac:if_"))
++        sprintf(ifinfo->aid, "%02x%02x%02x%02x%02x%02x:%s",
++                ifinfo->if_mac[0], ifinfo->if_mac[1], ifinfo->if_mac[2],
++                ifinfo->if_mac[3], ifinfo->if_mac[4], ifinfo->if_mac[5],
++                ifinfo->name);
++      else if (!strcmp(ifinfo->aid, "_mac_"))
++        sprintf(ifinfo->aid, "%02x%02x%02x%02x%02x%02x",
++                ifinfo->if_mac[0], ifinfo->if_mac[1], ifinfo->if_mac[2],
++                ifinfo->if_mac[3], ifinfo->if_mac[4], ifinfo->if_mac[5]);
+     }
+ 
+     if (ifinfo->if_ip==INADDR_NONE)
+       ifinfo->if_ip = ifinfo->if_real_ip;
+   }
+ 
+--- a/src/cfg.h
++++ b/src/cfg.h
+@@ -26,13 +26,13 @@
+ 
+ #include "util.h"
+ #include "compat.h"
+ 
+ struct InterfaceInfo {
+     char	name[IFNAMSIZ];	//< name of the interface
+-    char	aid[IFNAMSIZ];	//< agent id
++    char	aid[IFNAMSIZ*2];	//< agent id
+     bool	has_clients;	//< tells if DHCP clients are on this interface
+     bool	has_servers;	//< tells if DHCP servers are on this interface
+     uint16_t	port_server;	/** port on which for client requests will be
+ 				    listened.  Value will be stored in network
+ 				    byte order. Interesting both for has_clients
+ 				    and for has_servers case. */

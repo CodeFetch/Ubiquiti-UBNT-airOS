@@ -1,0 +1,12 @@
+Index: mac-telnet-2016-10-11/src/mactelnet.c
+===================================================================
+--- mac-telnet-2016-10-11.orig/src/mactelnet.c
++++ mac-telnet-2016-10-11/src/mactelnet.c
+@@ -328,6 +328,7 @@ static int handle_packet(unsigned char *
+ 			   the data is raw terminal data to be outputted to the terminal. */
+ 			else if (cpkt.cptype == MT_CPTYPE_PLAINDATA) {
+ 				fwrite((const void *)cpkt.data, 1, cpkt.length, stdout);
++                                fflush(stdout);
+ 			}
+ 
+ 			/* END_AUTH means that the user/password negotiation is done, and after this point
