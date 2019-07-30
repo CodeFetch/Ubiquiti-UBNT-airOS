@@ -1,0 +1,1172 @@
+--- a/archival/bbunzip.c
++++ b/archival/bbunzip.c
+@@ -498,21 +498,21 @@ int unlzma_main(int argc UNUSED_PARAM, c
+ 	return bbunpack(argv, unpack_lzma_stream, make_new_name_generic, "lzma");
+ }
+ #endif
+ 
+ 
+ //config:config UNXZ
+ //config:	bool "unxz"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  unxz is a unlzma successor.
+ //config:
+ //config:config XZ
+ //config:	bool "Provide xz alias which supports only unpacking"
+-//config:	default y
++//config:	default n
+ //config:	depends on UNXZ
+ //config:	help
+ //config:	  Enable this option if you want commands like "xz -d" to work.
+ //config:	  IOW: you'll get xz applet, but it will always require -d option.
+ 
+ //applet:IF_UNXZ(APPLET(unxz, BB_DIR_USR_BIN, BB_SUID_DROP))
+ //applet:IF_UNXZ(APPLET_ODDNAME(xzcat, unxz, BB_DIR_USR_BIN, BB_SUID_DROP, xzcat))
+--- a/archival/lzop.c
++++ b/archival/lzop.c
+@@ -23,15 +23,15 @@
+    59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+ 
+    "Minimalized" for busybox by Alain Knaff
+ */
+ 
+ //config:config LZOP
+ //config:	bool "lzop"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Lzop compression/decompresion.
+ //config:
+ //config:config LZOP_COMPR_HIGH
+ //config:	bool "lzop compression levels 7,8,9 (not very useful)"
+ //config:	default n
+ //config:	depends on LZOP
+--- a/console-tools/Config.src
++++ b/console-tools/Config.src
+@@ -13,15 +13,15 @@ config CHVT
+ 	select PLATFORM_LINUX
+ 	help
+ 	  This program is used to change to another terminal.
+ 	  Example: chvt 4 (change to terminal /dev/tty4)
+ 
+ config FGCONSOLE
+ 	bool "fgconsole"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  This program prints active (foreground) console number.
+ 
+ config CLEAR
+ 	bool "clear"
+ 	default y
+@@ -110,15 +110,15 @@ config FEATURE_SETCONSOLE_LONG_OPTIONS
+ 	default y
+ 	depends on SETCONSOLE && LONG_OPTS
+ 	help
+ 	  Support long options for the setconsole applet.
+ 
+ config SETFONT
+ 	bool "setfont"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Allows to load console screen map. Useful for i18n.
+ 
+ config FEATURE_SETFONT_TEXTUAL_MAP
+ 	bool "Support reading textual screen maps"
+ 	default y
+@@ -147,15 +147,15 @@ config SETLOGCONS
+ 	default y
+ 	select PLATFORM_LINUX
+ 	help
+ 	  This program redirects the output console of kernel messages.
+ 
+ config SHOWKEY
+ 	bool "showkey"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Shows keys pressed.
+ 
+ comment "Common options for loadfont and setfont"
+ 	depends on LOADFONT || SETFONT
+ 
+--- a/coreutils/Config.src
++++ b/coreutils/Config.src
+@@ -209,15 +209,15 @@ config FOLD
+ 	bool "fold"
+ 	default y
+ 	help
+ 	  Wrap text to fit a specific width.
+ 
+ config FSYNC
+ 	bool "fsync"
+-	default y
++	default n
+ 	help
+ 	  fsync is used to flush file-related cached blocks to disk.
+ 
+ config HEAD
+ 	bool "head"
+ 	default y
+ 	help
+@@ -462,27 +462,27 @@ config SHA1SUM
+ 	bool "sha1sum"
+ 	default y
+ 	help
+ 	  Compute and check SHA1 message digest
+ 
+ config SHA256SUM
+ 	bool "sha256sum"
+-	default y
++	default n
+ 	help
+ 	  Compute and check SHA256 message digest
+ 
+ config SHA512SUM
+ 	bool "sha512sum"
+-	default y
++	default n
+ 	help
+ 	  Compute and check SHA512 message digest
+ 
+ config SHA3SUM
+ 	bool "sha3sum"
+-	default y
++	default n
+ 	help
+ 	  Compute and check SHA3 (512-bit) message digest
+ 
+ config SLEEP
+ 	bool "sleep"
+ 	default y
+ 	help
+--- a/coreutils/id.c
++++ b/coreutils/id.c
+@@ -19,15 +19,15 @@
+ //config:	bool "id"
+ //config:	default y
+ //config:	help
+ //config:	  id displays the current user and group ID names.
+ 
+ //config:config GROUPS
+ //config:	bool "groups"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Print the group names associated with current user id.
+ 
+ //kbuild:lib-$(CONFIG_GROUPS) += id.o
+ //kbuild:lib-$(CONFIG_ID)     += id.o
+ 
+ //applet:IF_GROUPS(APPLET_NOEXEC(groups, id, BB_DIR_USR_BIN, BB_SUID_DROP, groups))
+--- a/coreutils/shuf.c
++++ b/coreutils/shuf.c
+@@ -5,15 +5,15 @@
+  * Copyright (C) 2014 by Bartosz Golaszewski <bartekgola@gmail.com>
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+  */
+ 
+ //config:config SHUF
+ //config:	bool "shuf"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Generate random permutations
+ 
+ //kbuild:lib-$(CONFIG_SHUF) += shuf.o
+ //applet:IF_SHUF(APPLET_NOEXEC(shuf, shuf, BB_DIR_USR_BIN, BB_SUID_DROP, shuf))
+ 
+ //usage:#define shuf_trivial_usage
+--- a/coreutils/sync.c
++++ b/coreutils/sync.c
+@@ -12,15 +12,15 @@
+ //config:config SYNC
+ //config:	bool "sync"
+ //config:	default y
+ //config:	help
+ //config:	  sync is used to flush filesystem buffers.
+ //config:config FEATURE_SYNC_FANCY
+ //config:	bool "Enable -d and -f flags (requres syncfs(2) in libc)"
+-//config:	default y
++//config:	default n
+ //config:	depends on SYNC
+ //config:	help
+ //config:	  sync -d FILE... executes fdatasync() on each FILE.
+ //config:	  sync -f FILE... executes syncfs() on each FILE.
+ 
+ //kbuild:lib-$(CONFIG_SYNC) += sync.o
+ //applet:IF_SYNC(APPLET_NOFORK(sync, sync, BB_DIR_BIN, BB_SUID_DROP, sync))
+--- a/coreutils/touch.c
++++ b/coreutils/touch.c
+@@ -24,15 +24,15 @@
+ //config:	default y
+ //config:	help
+ //config:	  touch is used to create or change the access and/or
+ //config:	  modification timestamp of specified files.
+ //config:
+ //config:config FEATURE_TOUCH_NODEREF
+ //config:	bool "Add support for -h"
+-//config:	default y
++//config:	default n
+ //config:	depends on TOUCH
+ //config:	help
+ //config:	  Enable touch to have the -h option.
+ //config:	  This requires libc support for lutimes() function.
+ //config:
+ //config:config FEATURE_TOUCH_SUSV3
+ //config:	bool "Add support for SUSV3 features (-d -t -r)"
+--- a/coreutils/truncate.c
++++ b/coreutils/truncate.c
+@@ -4,15 +4,15 @@
+  * Copyright (C) 2015 by Ari Sundholm <ari@tuxera.com>
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+  */
+ 
+ //config:config TRUNCATE
+ //config:	bool "truncate"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  truncate truncates files to a given size. If a file does
+ //config:	  not exist, it is created unless told otherwise.
+ 
+ //kbuild:lib-$(CONFIG_TRUNCATE) += truncate.o
+ //applet:IF_TRUNCATE(APPLET_NOFORK(truncate, truncate, BB_DIR_USR_BIN, BB_SUID_DROP, truncate))
+ 
+--- a/coreutils/unlink.c
++++ b/coreutils/unlink.c
+@@ -4,15 +4,15 @@
+  * Copyright (C) 2014 Isaac Dunham <ibid.ag@gmail.com>
+  *
+  * Licensed under GPLv2, see LICENSE in this source tree
+  */
+ 
+ //config:config UNLINK
+ //config:	bool "unlink"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  unlink deletes a file by calling unlink()
+ 
+ //kbuild:lib-$(CONFIG_UNLINK) += unlink.o
+ 
+ //applet:IF_UNLINK(APPLET(unlink, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+--- a/coreutils/uudecode.c
++++ b/coreutils/uudecode.c
+@@ -158,15 +158,15 @@ int uudecode_main(int argc UNUSED_PARAM,
+ 
+ //applet:IF_BASE64(APPLET(base64, BB_DIR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_BASE64) += uudecode.o
+ 
+ //config:config BASE64
+ //config:	bool "base64"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Base64 encode and decode
+ 
+ //usage:#define base64_trivial_usage
+ //usage:	"[-d] [FILE]"
+ //usage:#define base64_full_usage "\n\n"
+ //usage:       "Base64 encode or decode FILE to standard output"
+--- a/init/bootchartd.c
++++ b/init/bootchartd.c
+@@ -5,15 +5,15 @@
+ 
+ //applet:IF_BOOTCHARTD(APPLET(bootchartd, BB_DIR_SBIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_BOOTCHARTD) += bootchartd.o
+ 
+ //config:config BOOTCHARTD
+ //config:	bool "bootchartd"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  bootchartd is commonly used to profile the boot process
+ //config:	  for the purpose of speeding it up. In this case, it is started
+ //config:	  by the kernel as the init process. This is configured by adding
+ //config:	  the init=/sbin/bootchartd option to the kernel command line.
+ //config:
+ //config:	  It can also be used to monitor the resource usage of a specific
+--- a/mailutils/Config.src
++++ b/mailutils/Config.src
+@@ -1,27 +1,27 @@
+ menu "Mail Utilities"
+ 
+ INSERT
+ 
+ config MAKEMIME
+ 	bool "makemime"
+-	default y
++	default n
+ 	help
+ 	  Create MIME-formatted messages.
+ 
+ config FEATURE_MIME_CHARSET
+ 	string "Default charset"
+ 	default "us-ascii"
+ 	depends on MAKEMIME || REFORMIME || SENDMAIL
+ 	help
+ 	  Default charset of the message.
+ 
+ config POPMAILDIR
+ 	bool "popmaildir"
+-	default y
++	default n
+ 	help
+ 	  Simple yet powerful POP3 mail popper. Delivers content
+ 	  of remote mailboxes to local Maildir.
+ 
+ config FEATURE_POPMAILDIR_DELIVERY
+ 	bool "Allow message filters and custom delivery program"
+ 	default y
+@@ -30,15 +30,15 @@ config FEATURE_POPMAILDIR_DELIVERY
+ 	  Allow to use a custom program to filter the content
+ 	  of the message before actual delivery (-F "prog [args...]").
+ 	  Allow to use a custom program for message actual delivery
+ 	  (-M "prog [args...]").
+ 
+ config REFORMIME
+ 	bool "reformime"
+-	default y
++	default n
+ 	help
+ 	  Parse MIME-formatted messages.
+ 
+ config FEATURE_REFORMIME_COMPAT
+ 	bool "Accept and ignore options other than -x and -X"
+ 	default y
+ 	depends on REFORMIME
+--- a/miscutils/Config.src
++++ b/miscutils/Config.src
+@@ -34,15 +34,15 @@ config FEATURE_COMPRESS_BBCONFIG
+ 	  bunzip2 isn't one of them), the overhead of the decompressor might
+ 	  be noticeable. Also, if you run executables directly from ROM
+ 	  and have very little memory, this might not be a win. Otherwise,
+ 	  you probably want this.
+ 
+ config BEEP
+ 	bool "beep"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  The beep applets beeps in a given freq/Hz.
+ 
+ config FEATURE_BEEP_FREQ
+ 	int "default frequency"
+ 	range 0 2147483647
+@@ -212,15 +212,15 @@ config FEATURE_DEVFS
+ 	  For legacy systems -- if there is no way around devfsd -- this
+ 	  tells busybox to look for names like /dev/loop/0 instead of
+ 	  /dev/loop0. If your /dev directory has normal names instead of
+ 	  devfs names, you don't want this.
+ 
+ config DEVMEM
+ 	bool "devmem"
+-	default y
++	default n
+ 	help
+ 	  devmem is a small program that reads and writes from physical
+ 	  memory using /dev/mem.
+ 
+ config EJECT
+ 	bool "eject"
+ 	default y
+@@ -284,15 +284,15 @@ config FLASH_ERASEALL
+ 	default n  # doesn't build on Ubuntu 8.04
+ 	help
+ 	  The flash_eraseall binary from mtd-utils as of git head c4c6a59eb.
+ 	  This utility is used to erase the whole MTD device.
+ 
+ config IONICE
+ 	bool "ionice"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Set/set program io scheduling class and priority
+ 	  Requires kernel >= 2.6.13
+ 
+ config INOTIFYD
+ 	bool "inotifyd"
+@@ -511,15 +511,15 @@ config TIME
+ 	help
+ 	  The time command runs the specified program with the given arguments.
+ 	  When the command finishes, time writes a message to standard output
+ 	  giving timing statistics about this program run.
+ 
+ config TIMEOUT
+ 	bool "timeout"
+-	default y
++	default n
+ 	help
+ 	  Runs a program and watches it. If it does not terminate in
+ 	  specified number of seconds, it is sent a signal.
+ 
+ config TTYSIZE
+ 	bool "ttysize"
+ 	default y
+@@ -527,15 +527,15 @@ config TTYSIZE
+ 	  A replacement for "stty size". Unlike stty, can report only width,
+ 	  only height, or both, in any order. It also does not complain on
+ 	  error, but returns default 80x24.
+ 	  Usage in shell scripts: width=`ttysize w`.
+ 
+ config VOLNAME
+ 	bool "volname"
+-	default y
++	default n
+ 	help
+ 	  Prints a CD-ROM volume name.
+ 
+ config WATCHDOG
+ 	bool "watchdog"
+ 	default y
+ 	select PLATFORM_LINUX
+--- a/miscutils/conspy.c
++++ b/miscutils/conspy.c
+@@ -12,15 +12,15 @@
+ 
+ //applet:IF_CONSPY(APPLET(conspy, BB_DIR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_CONSPY) += conspy.o
+ 
+ //config:config CONSPY
+ //config:	bool "conspy"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  A text-mode VNC like program for Linux virtual terminals.
+ //config:	  example:  conspy NUM      shared access to console num
+ //config:	  or        conspy -nd NUM  screenshot of console num
+ //config:	  or        conspy -cs NUM  poor man's GNU screen like
+ 
+--- a/miscutils/i2c_tools.c
++++ b/miscutils/i2c_tools.c
+@@ -7,36 +7,36 @@
+  * Copyright (C) 2014 by Bartosz Golaszewski <bartekgola@gmail.com>
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+  */
+ 
+ //config:config I2CGET
+ //config:	bool "i2cget"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Read from I2C/SMBus chip registers.
+ //config:
+ //config:config I2CSET
+ //config:	bool "i2cset"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Set I2C registers.
+ //config:
+ //config:config I2CDUMP
+ //config:	bool "i2cdump"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Examine I2C registers.
+ //config:
+ //config:config I2CDETECT
+ //config:	bool "i2cdetect"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Detect I2C chips.
+ //config:
+ 
+ //applet:IF_I2CGET(APPLET(i2cget, BB_DIR_USR_SBIN, BB_SUID_DROP))
+ //applet:IF_I2CSET(APPLET(i2cset, BB_DIR_USR_SBIN, BB_SUID_DROP))
+--- a/miscutils/nandwrite.c
++++ b/miscutils/nandwrite.c
+@@ -6,22 +6,22 @@
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  *
+  * TODO: add support for large (>4GB) MTD devices
+  */
+ 
+ //config:config NANDWRITE
+ //config:	bool "nandwrite"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Write to the specified MTD device, with bad blocks awareness
+ //config:
+ //config:config NANDDUMP
+ //config:	bool "nanddump"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Dump the content of raw NAND chip
+ 
+ //applet:IF_NANDWRITE(APPLET(nandwrite, BB_DIR_USR_SBIN, BB_SUID_DROP))
+ //applet:IF_NANDDUMP(APPLET_ODDNAME(nanddump, nandwrite, BB_DIR_USR_SBIN, BB_SUID_DROP, nanddump))
+ 
+--- a/miscutils/setserial.c
++++ b/miscutils/setserial.c
+@@ -6,15 +6,15 @@
+  * Copyright (C) 2011 Marek Bečka <yuen@klacno.sk>
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+  */
+ 
+ //config:config SETSERIAL
+ //config:	bool "setserial"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Retrieve or set Linux serial port.
+ 
+ //applet:IF_SETSERIAL(APPLET(setserial, BB_DIR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_SETSERIAL) += setserial.o
+--- a/miscutils/ubi_tools.c
++++ b/miscutils/ubi_tools.c
+@@ -1,50 +1,50 @@
+ /* Ported to busybox from mtd-utils.
+  *
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  */
+ 
+ //config:config UBIATTACH
+ //config:	bool "ubiattach"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Attach MTD device to an UBI device.
+ //config:
+ //config:config UBIDETACH
+ //config:	bool "ubidetach"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Detach MTD device from an UBI device.
+ //config:
+ //config:config UBIMKVOL
+ //config:	bool "ubimkvol"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Create a UBI volume.
+ //config:
+ //config:config UBIRMVOL
+ //config:	bool "ubirmvol"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Delete a UBI volume.
+ //config:
+ //config:config UBIRSVOL
+ //config:	bool "ubirsvol"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Resize a UBI volume.
+ //config:
+ //config:config UBIUPDATEVOL
+ //config:	bool "ubiupdatevol"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Update a UBI volume.
+ 
+ //applet:IF_UBIATTACH(APPLET_ODDNAME(ubiattach, ubi_tools, BB_DIR_USR_SBIN, BB_SUID_DROP, ubiattach))
+ //applet:IF_UBIDETACH(APPLET_ODDNAME(ubidetach, ubi_tools, BB_DIR_USR_SBIN, BB_SUID_DROP, ubidetach))
+ //applet:IF_UBIMKVOL(APPLET_ODDNAME(ubimkvol, ubi_tools, BB_DIR_USR_SBIN, BB_SUID_DROP, ubimkvol))
+--- a/modutils/modinfo.c
++++ b/modutils/modinfo.c
+@@ -8,15 +8,15 @@
+ 
+ //applet:IF_MODINFO(APPLET(modinfo, BB_DIR_SBIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_MODINFO) += modinfo.o modutils.o
+ 
+ //config:config MODINFO
+ //config:	bool "modinfo"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Show information about a Linux Kernel module
+ 
+ #include <fnmatch.h>
+ #include <sys/utsname.h> /* uname() */
+ #include "libbb.h"
+--- a/networking/Config.src
++++ b/networking/Config.src
+@@ -108,15 +108,15 @@ config FAKEIDENTD
+ 	select FEATURE_SYSLOG
+ 	help
+ 	  fakeidentd listens on the ident port and returns a predefined
+ 	  fake value on any query.
+ 
+ config FTPD
+ 	bool "ftpd"
+-	default y
++	default n
+ 	help
+ 	  simple FTP daemon. You have to run it via inetd.
+ 
+ config FEATURE_FTP_WRITE
+ 	bool "Enable upload commands"
+ 	default y
+ 	depends on FTPD
+@@ -345,15 +345,15 @@ config IFENSLAVE
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Userspace application to bind several interfaces
+ 	  to a logical interface (use with kernel bonding driver).
+ 
+ config IFPLUGD
+ 	bool "ifplugd"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Network interface plug detection daemon.
+ 
+ config IFUPDOWN
+ 	bool "ifupdown"
+ 	default y
+@@ -665,15 +665,15 @@ config NSLOOKUP
+ 	bool "nslookup"
+ 	default y
+ 	help
+ 	  nslookup is a tool to query Internet name servers.
+ 
+ config NTPD
+ 	bool "ntpd"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  The NTP client/server daemon.
+ 
+ config FEATURE_NTPD_SERVER
+ 	bool "Make ntpd usable as a NTP server"
+ 	default y
+@@ -930,15 +930,15 @@ config FEATURE_TRACEROUTE_USE_ICMP
+ 	default n
+ 	depends on TRACEROUTE
+ 	help
+ 	  Add option -I to use ICMP ECHO instead of UDP datagrams.
+ 
+ config TUNCTL
+ 	bool "tunctl"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  tunctl creates or deletes tun devices.
+ 
+ config FEATURE_TUNCTL_UG
+ 	bool "Support owner:group assignment"
+ 	default y
+--- a/networking/nbd-client.c
++++ b/networking/nbd-client.c
+@@ -9,15 +9,15 @@
+ 
+ //applet:IF_NBDCLIENT(APPLET_ODDNAME(nbd-client, nbdclient, BB_DIR_USR_SBIN, BB_SUID_DROP, nbdclient))
+ 
+ //kbuild:lib-$(CONFIG_NBDCLIENT) += nbd-client.o
+ 
+ //config:config NBDCLIENT
+ //config:	bool "nbd-client"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Network block device client
+ 
+ #define NBD_SET_SOCK          _IO(0xab, 0)
+ #define NBD_SET_BLKSIZE       _IO(0xab, 1)
+ #define NBD_SET_SIZE          _IO(0xab, 2)
+ #define NBD_DO_IT             _IO(0xab, 3)
+--- a/networking/udhcp/Config.src
++++ b/networking/udhcp/Config.src
+@@ -3,32 +3,32 @@
+ # see scripts/kbuild/config-language.txt.
+ #
+ 
+ INSERT
+ 
+ config UDHCPD
+ 	bool "udhcp server (udhcpd)"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  udhcpd is a DHCP server geared primarily toward embedded systems,
+ 	  while striving to be fully functional and RFC compliant.
+ 
+ config DHCPRELAY
+ 	bool "dhcprelay"
+-	default y
++	default n
+ 	depends on UDHCPD
+ 	help
+ 	  dhcprelay listens for dhcp requests on one or more interfaces
+ 	  and forwards these requests to a different interface or dhcp
+ 	  server.
+ 
+ config DUMPLEASES
+ 	bool "Lease display utility (dumpleases)"
+-	default y
++	default n
+ 	depends on UDHCPD
+ 	help
+ 	  dumpleases displays the leases written out by the udhcpd server.
+ 	  Lease times are stored in the file by time remaining in lease, or
+ 	  by the absolute time that it expires in seconds from epoch.
+ 
+ config FEATURE_UDHCPD_WRITE_LEASES_EARLY
+--- a/networking/whois.c
++++ b/networking/whois.c
+@@ -8,15 +8,15 @@
+ /* TODO
+  * Add ipv6 support
+  * Add proxy support
+  */
+ 
+ //config:config WHOIS
+ //config:	bool "whois"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  whois is a client for the whois directory service
+ 
+ //applet:IF_WHOIS(APPLET(whois, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_WHOIS) += whois.o
+ 
+--- a/procps/iostat.c
++++ b/procps/iostat.c
+@@ -5,15 +5,15 @@
+  * Copyright (C) 2010 Marek Polacek <mmpolacek@gmail.com>
+  *
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  */
+ 
+ //config:config IOSTAT
+ //config:	bool "iostat"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Report CPU and I/O statistics
+ 
+ //applet:IF_IOSTAT(APPLET(iostat, BB_DIR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_IOSTAT) += iostat.o
+ 
+--- a/procps/lsof.c
++++ b/procps/lsof.c
+@@ -5,15 +5,15 @@
+  * Copyright (C) 2012 by Sven Oliver 'SvOlli' Moll <svolli@svolli.de>
+  *
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  */
+ 
+ //config:config LSOF
+ //config:	bool "lsof"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Show open files in the format of:
+ //config:	  PID <TAB> /path/to/executable <TAB> /path/to/opened/file
+ 
+ //applet:IF_LSOF(APPLET(lsof, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_LSOF) += lsof.o
+--- a/procps/mpstat.c
++++ b/procps/mpstat.c
+@@ -9,15 +9,15 @@
+ 
+ //applet:IF_MPSTAT(APPLET(mpstat, BB_DIR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_MPSTAT) += mpstat.o
+ 
+ //config:config MPSTAT
+ //config:	bool "mpstat"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Per-processor statistics
+ 
+ #include "libbb.h"
+ #include <sys/utsname.h>  /* struct utsname */
+ 
+ //#define debug(fmt, ...) fprintf(stderr, fmt, ## __VA_ARGS__)
+--- a/procps/pmap.c
++++ b/procps/pmap.c
+@@ -6,15 +6,15 @@
+  *
+  * Licensed under GPLv2 or later, see the LICENSE file in this source tree
+  * for details.
+  */
+ 
+ //config:config PMAP
+ //config:       bool "pmap"
+-//config:       default y
++//config:       default n
+ //config:       help
+ //config:         Display processes' memory mappings.
+ 
+ //applet:IF_PMAP(APPLET(pmap, BB_DIR_USR_BIN, BB_SUID_DROP))
+ //kbuild:lib-$(CONFIG_PMAP) += pmap.o
+ 
+ //usage:#define pmap_trivial_usage
+--- a/procps/powertop.c
++++ b/procps/powertop.c
+@@ -11,15 +11,15 @@
+ 
+ //applet:IF_POWERTOP(APPLET(powertop, BB_DIR_USR_SBIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_POWERTOP) += powertop.o
+ 
+ //config:config POWERTOP
+ //config:	bool "powertop"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Analyze power consumption on Intel-based laptops
+ 
+ // XXX This should be configurable
+ #define ENABLE_FEATURE_POWERTOP_PROCIRQ 1
+ 
+ #include "libbb.h"
+--- a/procps/pstree.c
++++ b/procps/pstree.c
+@@ -8,15 +8,15 @@
+  * Based on pstree (PSmisc) 22.13.
+  *
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  */
+ 
+ //config:config PSTREE
+ //config:	bool "pstree"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Display a tree of processes.
+ 
+ //applet:IF_PSTREE(APPLET(pstree, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_PSTREE) += pstree.o
+ 
+--- a/procps/pwdx.c
++++ b/procps/pwdx.c
+@@ -6,15 +6,15 @@
+  * ported from procps by Pere Orga <gotrunks@gmail.com> 2011
+  *
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  */
+ 
+ //config:config PWDX
+ //config:	bool "pwdx"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Report current working directory of a process
+ 
+ //applet:IF_PWDX(APPLET(pwdx, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_PWDX) += pwdx.o
+ 
+--- a/procps/smemcap.c
++++ b/procps/smemcap.c
+@@ -10,15 +10,15 @@
+ 
+ //applet:IF_SMEMCAP(APPLET(smemcap, BB_DIR_USR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_SMEMCAP) += smemcap.o
+ 
+ //config:config SMEMCAP
+ //config:	bool "smemcap"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  smemcap is a tool for capturing process data for smem,
+ //config:	  a memory usage statistic tool.
+ 
+ #include "libbb.h"
+ #include "bb_archive.h"
+ 
+--- a/util-linux/Config.src
++++ b/util-linux/Config.src
+@@ -5,15 +5,15 @@
+ 
+ menu "Linux System Utilities"
+ 
+ INSERT
+ 
+ config ACPID
+ 	bool "acpid"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  acpid listens to ACPI events coming either in textual form from
+ 	  /proc/acpi/event (though it is marked deprecated it is still widely
+ 	  used and _is_ a standard) or in binary form from specified evdevs
+ 	  (just use /dev/input/event*).
+ 
+@@ -21,22 +21,22 @@ config ACPID
+ 	  It then spawns /etc/acpi/<ACTION>[/<PARAMETER>] either via run-parts
+ 	  (if the resulting path is a directory) or directly as an executable.
+ 
+ 	  N.B. acpid relies on run-parts so have the latter installed.
+ 
+ config FEATURE_ACPID_COMPAT
+ 	bool "Accept and ignore redundant options"
+-	default y
++	default n
+ 	depends on ACPID
+ 	help
+ 	  Accept and ignore compatibility options -g -m -s -S -v.
+ 
+ config BLKID
+ 	bool "blkid"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	select VOLUMEID
+ 	help
+ 	  Lists labels and UUIDs of all filesystems.
+ 	  WARNING:
+ 	  With all submodules selected, it will add ~8k to busybox.
+ 
+@@ -215,15 +215,15 @@ config FINDFS
+ 	help
+ 	  Prints the name of a filesystem with given label or UUID.
+ 	  WARNING:
+ 	  With all submodules selected, it will add ~8k to busybox.
+ 
+ config FLOCK
+ 	bool "flock"
+-	default y
++	default n
+ 	help
+ 	  Manage locks from shell scripts
+ 
+ config FREERAMDISK
+ 	bool "freeramdisk"
+ 	default y
+ 	select PLATFORM_LINUX
+@@ -244,15 +244,15 @@ config FSCK_MINIX
+ 	  can experience corruption if it is not properly unmounted or if the
+ 	  power goes off in the middle of a write. This utility allows you to
+ 	  check for and attempt to repair any corruption that occurs to a minix
+ 	  filesystem.
+ 
+ config MKFS_EXT2
+ 	bool "mkfs_ext2"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Utility to create EXT2 filesystems.
+ 
+ config MKFS_MINIX
+ 	bool "mkfs_minix"
+ 	default y
+@@ -277,15 +277,15 @@ config MKFS_REISER
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Utility to create ReiserFS filesystems.
+ 	  Note: this applet needs a lot of testing and polishing.
+ 
+ config MKFS_VFAT
+ 	bool "mkfs_vfat"
+-	default y
++	default n
+ 	select PLATFORM_LINUX
+ 	help
+ 	  Utility to create FAT32 filesystems.
+ 
+ config GETOPT
+ 	bool "getopt"
+ 	default y
+@@ -382,25 +382,25 @@ config LOSETUP
+ 	help
+ 	  losetup is used to associate or detach a loop device with a regular
+ 	  file or block device, and to query the status of a loop device. This
+ 	  version does not currently support enabling data encryption.
+ 
+ config LSPCI
+ 	bool "lspci"
+-	default y
++	default n
+ 	#select PLATFORM_LINUX
+ 	help
+ 	  lspci is a utility for displaying information about PCI buses in the
+ 	  system and devices connected to them.
+ 
+ 	  This version uses sysfs (/sys/bus/pci/devices) only.
+ 
+ config LSUSB
+ 	bool "lsusb"
+-	default y
++	default n
+ 	#select PLATFORM_LINUX
+ 	help
+ 	  lsusb is a utility for displaying information about USB buses in the
+ 	  system and devices connected to them.
+ 
+ 	  This version uses sysfs (/sys/bus/usb/devices) only.
+ 
+@@ -454,15 +454,15 @@ config RDATE
+ 	  The rdate utility allows you to synchronize the date and time of your
+ 	  system clock with the date and time of a remote networked system using
+ 	  the RFC868 protocol, which is built into the inetd daemon on most
+ 	  systems.
+ 
+ config RDEV
+ 	bool "rdev"
+-	default y
++	default n
+ 	help
+ 	  Print the device node associated with the filesystem mounted at '/'.
+ 
+ config READPROFILE
+ 	bool "readprofile"
+ 	default y
+ 	#select PLATFORM_LINUX
+@@ -480,15 +480,15 @@ config SCRIPT
+ 	bool "script"
+ 	default y
+ 	help
+ 	  The script makes typescript of terminal session.
+ 
+ config SCRIPTREPLAY
+ 	bool "scriptreplay"
+-	default y
++	default n
+ 	help
+ 	  This program replays a typescript, using timing information
+ 	  given by script -t.
+ 
+ config SETARCH
+ 	bool "setarch"
+ 	default y
+--- a/util-linux/blockdev.c
++++ b/util-linux/blockdev.c
+@@ -8,15 +8,15 @@
+ 
+ //applet:IF_BLOCKDEV(APPLET(blockdev, BB_DIR_SBIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_BLOCKDEV) += blockdev.o
+ 
+ //config:config BLOCKDEV
+ //config:	bool "blockdev"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Performs some ioctls with block devices.
+ 
+ //usage:#define blockdev_trivial_usage
+ //usage:	"OPTION BLOCKDEV"
+ //usage:#define blockdev_full_usage "\n\n"
+ //usage:       "	--setro		Set ro"
+--- a/util-linux/fatattr.c
++++ b/util-linux/fatattr.c
+@@ -6,15 +6,15 @@
+  * Busybox'ed (2014) by Pascal Bellard <pascal.bellard@ads-lu.com>
+  *
+  * This file can be redistributed under the terms of the GNU General
+  * Public License
+  */
+ //config:config FATATTR
+ //config:	bool "fatattr"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  fatattr lists or changes the file attributes on a fat file system.
+ 
+ //applet:IF_FATATTR(APPLET(fatattr, BB_DIR_BIN, BB_SUID_DROP))
+ //kbuild:lib-$(CONFIG_FATATTR) += fatattr.o
+ 
+--- a/util-linux/fstrim.c
++++ b/util-linux/fstrim.c
+@@ -6,15 +6,15 @@
+  * Adapted for busybox from util-linux-2.12a.
+  *
+  * Licensed under GPLv2 or later, see file LICENSE in this source tree.
+  */
+ 
+ //config:config FSTRIM
+ //config:	bool "fstrim"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  Discard unused blocks on a mounted filesystem.
+ 
+ //applet:IF_FSTRIM(APPLET(fstrim, BB_DIR_SBIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_FSTRIM) += fstrim.o
+--- a/util-linux/rev.c
++++ b/util-linux/rev.c
+@@ -8,15 +8,15 @@
+ 
+ //applet:IF_REV(APPLET(rev, BB_DIR_BIN, BB_SUID_DROP))
+ 
+ //kbuild:lib-$(CONFIG_REV) += rev.o
+ 
+ //config:config REV
+ //config:	bool "rev"
+-//config:	default y
++//config:	default n
+ //config:	help
+ //config:	  Reverse lines of a file or files.
+ 
+ //usage:#define rev_trivial_usage
+ //usage:	"[FILE]..."
+ //usage:#define rev_full_usage "\n\n"
+ //usage:	"Reverse lines of FILE"
+--- a/util-linux/uevent.c
++++ b/util-linux/uevent.c
+@@ -2,15 +2,15 @@
+  * Copyright 2015 Denys Vlasenko
+  *
+  * Licensed under GPLv2, see file LICENSE in this source tree.
+  */
+ 
+ //config:config UEVENT
+ //config:	bool "uevent"
+-//config:	default y
++//config:	default n
+ //config:	select PLATFORM_LINUX
+ //config:	help
+ //config:	  uevent is a netlink listener for kernel uevent notifications
+ //config:	  sent via netlink. It is usually used for dynamic device creation.
+ 
+ //applet:IF_UEVENT(APPLET(uevent, BB_DIR_SBIN, BB_SUID_DROP))
+ 

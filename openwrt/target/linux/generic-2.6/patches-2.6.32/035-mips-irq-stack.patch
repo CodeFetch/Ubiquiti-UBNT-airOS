@@ -1,0 +1,321 @@
+Index: linux-2.6.32.71/arch/mips/include/asm/irq.h
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/include/asm/irq.h
++++ linux-2.6.32.71/arch/mips/include/asm/irq.h
+@@ -16,6 +16,33 @@
+ 
+ #include <irq.h>
+ 
++#define IRQ_STACK_SIZE			THREAD_SIZE
++#define IRQ_STACK_START			(IRQ_STACK_SIZE - sizeof(unsigned long))
++
++extern void *irq_stack[NR_CPUS];
++
++/*
++ * The highest address on the IRQ stack contains a dummy frame put down in
++ * genex.S (handle_int & except_vec_vi_handler) which is structured as follows:
++ *
++ *   top ------------
++ *       | task sp  | <- irq_stack[cpu] + IRQ_STACK_START
++ *       ------------
++ *       |          | <- First frame of IRQ context
++ *       ------------
++ *
++ * task sp holds a copy of the task stack pointer where the struct pt_regs
++ * from exception entry can be found.
++ */
++
++static inline bool on_irq_stack(int cpu, unsigned long sp)
++{
++	unsigned long low = (unsigned long)irq_stack[cpu];
++	unsigned long high = low + IRQ_STACK_SIZE;
++
++	return (low <= sp && sp <= high);
++}
++
+ #ifdef CONFIG_I8259
+ static inline int irq_canonicalize(int irq)
+ {
+Index: linux-2.6.32.71/arch/mips/kernel/asm-offsets.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/asm-offsets.c
++++ linux-2.6.32.71/arch/mips/kernel/asm-offsets.c
+@@ -99,6 +99,8 @@ void output_thread_info_defines(void)
+ 	OFFSET(TI_REGS, thread_info, regs);
+ 	DEFINE(_THREAD_SIZE, THREAD_SIZE);
+ 	DEFINE(_THREAD_MASK, THREAD_MASK);
++	DEFINE(_IRQ_STACK_SIZE, IRQ_STACK_SIZE);
++	DEFINE(_IRQ_STACK_START, IRQ_STACK_START);
+ 	BLANK();
+ }
+ 
+Index: linux-2.6.32.71/arch/mips/kernel/irq.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/irq.c
++++ linux-2.6.32.71/arch/mips/kernel/irq.c
+@@ -27,6 +27,9 @@
+ #include <asm/system.h>
+ #include <asm/uaccess.h>
+ 
++void *irq_stack[NR_CPUS];
++
++
+ #ifdef CONFIG_KGDB
+ int kgdb_early_setup;
+ #endif
+@@ -145,6 +148,15 @@ void __init init_IRQ(void)
+ 
+ 	arch_init_irq();
+ 
++	for_each_possible_cpu(i) {
++		int irq_pages = IRQ_STACK_SIZE / PAGE_SIZE;
++		void *s = (void *)__get_free_pages(GFP_KERNEL, irq_pages);
++
++		irq_stack[i] = s;
++		printk("CPU%d IRQ stack at 0x%p - 0x%p\n", i,
++			irq_stack[i], irq_stack[i] + IRQ_STACK_SIZE);
++	}
++
+ #ifdef CONFIG_KGDB
+ 	if (!kgdb_early_setup)
+ 		kgdb_early_setup = 1;
+Index: linux-2.6.32.71/arch/mips/include/asm/stackframe.h
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/include/asm/stackframe.h
++++ linux-2.6.32.71/arch/mips/include/asm/stackframe.h
+@@ -192,6 +192,12 @@
+ 		LONG_S	$25, PT_R25(sp)
+ 		LONG_S	$28, PT_R28(sp)
+ 		LONG_S	$31, PT_R31(sp)
++
++		/* Set thread_info if we're coming from user mode */
++		mfc0	k0, CP0_STATUS
++		sll	k0, 3		/* extract cu0 bit */
++		bltz	k0, 9f
++
+ 		ori	$28, sp, _THREAD_MASK
+ 		xori	$28, _THREAD_MASK
+ #ifdef CONFIG_CPU_CAVIUM_OCTEON
+@@ -207,6 +213,7 @@
+ 		LONG_L  ra, PT_R31(sp)
+ 		pref    0, 0(v1)    /* Prefetch the current thread */
+ #endif
++9:
+ 		.set	pop
+ 		.endm
+ 
+Index: linux-2.6.32.71/arch/mips/kernel/genex.S
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/genex.S
++++ linux-2.6.32.71/arch/mips/kernel/genex.S
+@@ -201,8 +201,46 @@ NESTED(handle_int, PT_SIZE, sp)
+ 
+ 	LONG_L	s0, TI_REGS($28)
+ 	LONG_S	sp, TI_REGS($28)
+-	PTR_LA	ra, ret_from_irq
+-	j	plat_irq_dispatch
++
++	/*
++	 * SAVE_ALL ensures we are using a valid kernel stack for the thread.
++	 * Check if we are already using the IRQ stack.
++	 */
++	move	s1, sp # Preserve the sp
++
++	/* Get IRQ stack for this CPU */
++	mfc0	k0, $4
++#if defined(CONFIG_32BIT) || defined(KBUILD_64BIT_SYM32)
++	lui	k1, %hi(irq_stack)
++#else
++	lui	k1, %highest(irq_stack)
++	daddiu	k1, %higher(irq_stack)
++	dsll	k1, 16
++	daddiu	k1, %hi(irq_stack)
++	dsll	k1, 16
++#endif
++	LONG_SRL	k0, 23
++	LONG_ADDU	k1, k0
++	LONG_L	t0, %lo(irq_stack)(k1)
++
++	# Check if already on IRQ stack
++	PTR_LI	t1, ~(_THREAD_SIZE-1)
++	and	t1, t1, sp
++	beq	t0, t1, 2f
++
++	/* Switch to IRQ stack */
++	li	t1, _IRQ_STACK_START
++	PTR_ADD sp, t0, t1
++
++	/* Save task's sp on IRQ stack so that unwinding can follow it */
++	LONG_S	s1, 0(sp)
++2:
++	jal	plat_irq_dispatch
++
++	/* Restore sp */
++	move	sp, s1
++
++	j	ret_from_irq
+ 	END(handle_int)
+ 
+ 	__INIT
+@@ -304,8 +342,46 @@ NESTED(except_vec_vi_handler, 0, sp)
+ 
+ 	LONG_L	s0, TI_REGS($28)
+ 	LONG_S	sp, TI_REGS($28)
+-	PTR_LA	ra, ret_from_irq
+-	jr	v0
++
++	/*
++	 * SAVE_ALL ensures we are using a valid kernel stack for the thread.
++	 * Check if we are already using the IRQ stack.
++	 */
++	move	s1, sp # Preserve the sp
++
++	/* Get IRQ stack for this CPU */
++	mfc0	k0, $4
++#if defined(CONFIG_32BIT) || defined(KBUILD_64BIT_SYM32)
++	lui	k1, %hi(irq_stack)
++#else
++	lui	k1, %highest(irq_stack)
++	daddiu	k1, %higher(irq_stack)
++	dsll	k1, 16
++	daddiu	k1, %hi(irq_stack)
++	dsll	k1, 16
++#endif
++	LONG_SRL	k0, 23
++	LONG_ADDU	k1, k0
++	LONG_L	t0, %lo(irq_stack)(k1)
++
++	# Check if already on IRQ stack
++	PTR_LI	t1, ~(_THREAD_SIZE-1)
++	and	t1, t1, sp
++	beq	t0, t1, 2f
++
++	/* Switch to IRQ stack */
++	li	t1, _IRQ_STACK_START
++	PTR_ADD sp, t0, t1
++
++	/* Save task's sp on IRQ stack so that unwinding can follow it */
++	LONG_S	s1, 0(sp)
++2:
++	jalr	v0
++
++	/* Restore sp */
++	move	sp, s1
++
++	j	ret_from_irq
+ 	END(except_vec_vi_handler)
+ 
+ /*
+Index: linux-2.6.32.71/arch/mips/kernel/process.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/process.c
++++ linux-2.6.32.71/arch/mips/kernel/process.c
+@@ -25,6 +25,7 @@
+ #include <linux/init.h>
+ #include <linux/completion.h>
+ #include <linux/kallsyms.h>
++#include <linux/hardirq.h>
+ #include <linux/random.h>
+ 
+ #include <asm/asm.h>
+@@ -32,6 +33,7 @@
+ #include <asm/cpu.h>
+ #include <asm/dsp.h>
+ #include <asm/fpu.h>
++#include <asm/irq.h>
+ #include <asm/pgtable.h>
+ #include <asm/system.h>
+ #include <asm/mipsregs.h>
+@@ -374,33 +376,66 @@ unsigned long thread_saved_pc(struct tas
+ unsigned long unwind_stack(struct task_struct *task, unsigned long *sp,
+ 			   unsigned long pc, unsigned long *ra)
+ {
+-	unsigned long stack_page;
++	unsigned long stack_page = 0;
++	int cpu;
++	unsigned long low, high, irq_stack_high;
+ 	struct mips_frame_info info;
+ 	unsigned long size, ofs;
++	struct pt_regs *regs;
+ 	int leaf;
+ 	extern void ret_from_irq(void);
+ 	extern void ret_from_exception(void);
+ 
+-	stack_page = (unsigned long)task_stack_page(task);
++	for_each_possible_cpu(cpu) {
++		if (on_irq_stack(cpu, *sp)) {
++			stack_page = (unsigned long)irq_stack[cpu];
++			break;
++		}
++	}
++
++	if (!stack_page)
++		stack_page = (unsigned long)task_stack_page(task);
++
+ 	if (!stack_page)
+ 		return 0;
+ 
+ 	/*
+-	 * If we reached the bottom of interrupt context,
+-	 * return saved pc in pt_regs.
++	 * IRQ stacks start at IRQ_STACK_START
++	 * task stacks at THREAD_SIZE - 32
+ 	 */
+-	if (pc == (unsigned long)ret_from_irq ||
+-	    pc == (unsigned long)ret_from_exception) {
+-		struct pt_regs *regs;
+-		if (*sp >= stack_page &&
+-		    *sp + sizeof(*regs) <= stack_page + THREAD_SIZE - 32) {
+-			regs = (struct pt_regs *)*sp;
+-			pc = regs->cp0_epc;
+-			if (__kernel_text_address(pc)) {
+-				*sp = regs->regs[29];
+-				*ra = regs->regs[31];
+-				return pc;
+-			}
++	low = stack_page;
++	if (!preemptible() && on_irq_stack(raw_smp_processor_id(), *sp)) {
++		high = stack_page + IRQ_STACK_START;
++		irq_stack_high = high;
++	} else {
++		high = stack_page + THREAD_SIZE - 32;
++		irq_stack_high = 0;
++	}
++
++	/*
++	 * If we reached the top of the interrupt stack, start unwinding
++	 * the interrupted task stack.
++	 */
++	if (unlikely(*sp == irq_stack_high)) {
++		unsigned long task_sp = *(unsigned long *)*sp;
++
++		/*
++		 * Check that the pointer saved in the IRQ stack head points to
++		 * something within the stack of the current task
++		 */
++		if (!object_is_on_stack((void *)task_sp))
++			return 0;
++
++		/*
++		 * Follow pointer to tasks kernel stack frame where interrupted
++		 * state was saved.
++		 */
++		regs = (struct pt_regs *)task_sp;
++		pc = regs->cp0_epc;
++		if (__kernel_text_address(pc)) {
++			*sp = regs->regs[29];
++			*ra = regs->regs[31];
++			return pc;
+ 		}
+ 		return 0;
+ 	}
+@@ -421,8 +456,7 @@ unsigned long unwind_stack(struct task_s
+ 	if (leaf < 0)
+ 		return 0;
+ 
+-	if (*sp < stack_page ||
+-	    *sp + info.frame_size > stack_page + THREAD_SIZE - 32)
++	if (*sp < low || *sp + info.frame_size > high)
+ 		return 0;
+ 
+ 	if (leaf)

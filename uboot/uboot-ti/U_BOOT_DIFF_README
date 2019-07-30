@@ -1,0 +1,16 @@
+How to build DB12x (WASP) u-boot bootloader
+
+1. download Atheros LSDK: lsdk.9.2.0.1020
+2. extract it
+3. go to boot/ directory
+4. apply this patch (../lsdk.9.2.0.1020_wasp_ar8035_u-boot.diff)
+5. go to ../build directory
+6. make BOARD_TYPE=db12x  
+   It will build toolchain stuff. 
+   Do not worry if it will fail ath the end of compile. We need gcc stuff.
+7. make uboot BOARD_TYPE=db12x ETH_CONFIG2=_ar8035
+   It will build u-boot for WASP with:
+   * external AR8035 PHY on MAC0
+   * internal S27 PHY on MAC1
+8. use ../boot/u-boot/u-boot.bin u-boot image to flash
+

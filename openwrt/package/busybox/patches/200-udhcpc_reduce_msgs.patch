@@ -1,0 +1,34 @@
+--- a/networking/udhcp/dhcpc.c
++++ b/networking/udhcp/dhcpc.c
+@@ -691,14 +691,15 @@ static int bcast_or_ucast(struct dhcp_pa
+ }
+ 
+ /* Broadcast a DHCP discover packet to the network, with an optionally requested IP */
+ /* NOINLINE: limit stack usage in caller */
+ static NOINLINE int send_discover(uint32_t xid, uint32_t requested)
+ {
+ 	struct dhcp_packet packet;
++	static int msgs = 0;
+ 
+ 	/* Fill in: op, htype, hlen, cookie, chaddr fields,
+ 	 * random xid field (we override it below),
+ 	 * client-id option (unless -C), message type option:
+ 	 */
+ 	init_packet(&packet, DHCPDISCOVER);
+ 
+@@ -708,14 +709,15 @@ static NOINLINE int send_discover(uint32
+ 
+ 	/* Add options: maxsize,
+ 	 * optionally: hostname, fqdn, vendorclass,
+ 	 * "param req" option according to -O, options specified with -x
+ 	 */
+ 	add_client_options(&packet);
+ 
++	if (msgs++ < 3)
+ 	bb_info_msg("Sending discover...");
+ 	return raw_bcast_from_client_config_ifindex(&packet);
+ }
+ 
+ /* Broadcast a DHCP request message */
+ /* RFC 2131 3.1 paragraph 3:
+  * "The client _broadcasts_ a DHCPREQUEST message..."

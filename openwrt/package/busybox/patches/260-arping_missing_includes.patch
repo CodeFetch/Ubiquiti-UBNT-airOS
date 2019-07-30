@@ -1,0 +1,19 @@
+--- a/networking/arping.c
++++ b/networking/arping.c
+@@ -20,14 +20,16 @@
+ //usage:     "\n	-w TIMEOUT	Seconds to wait for ARP reply"
+ //usage:     "\n	-I IFACE	Interface to use (default eth0)"
+ //usage:     "\n	-s SRC_IP	Sender IP address"
+ //usage:     "\n	DST_IP		Target IP address"
+ 
+ #include <arpa/inet.h>
+ #include <net/if.h>
++#include <net/if_arp.h>
++#include <netinet/if_ether.h>
+ #include <netinet/ether.h>
+ #include <netpacket/packet.h>
+ 
+ #include "libbb.h"
+ 
+ /* We don't expect to see 1000+ seconds delay, unsigned is enough */
+ #define MONOTONIC_US() ((unsigned)monotonic_us())

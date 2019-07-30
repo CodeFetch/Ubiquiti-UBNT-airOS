@@ -1,0 +1,20 @@
+Index: linux-2.6.32.71/arch/mips/kernel/unaligned.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/unaligned.c
++++ linux-2.6.32.71/arch/mips/kernel/unaligned.c
+@@ -481,13 +481,13 @@ fault:
+ 	if (fixup_exception(regs))
+ 		return;
+ 
+-	die_if_kernel("Unhandled kernel unaligned access", regs);
++	die_if_kernel("Unhandled(fault) kernel unaligned access", regs);
+ 	force_sig(SIGSEGV, current);
+ 
+ 	return;
+ 
+ sigbus:
+-	die_if_kernel("Unhandled kernel unaligned access", regs);
++	die_if_kernel("Unhandled(sigbus) kernel unaligned access", regs);
+ 	force_sig(SIGBUS, current);
+ 
+ 	return;

@@ -1,0 +1,54 @@
+--- a/src/forward.c
++++ b/src/forward.c
+@@ -619,14 +619,23 @@ void receive_query(struct listener *list
+   
+   source_addr.sa.sa_family = listen->family;
+ #ifdef HAVE_IPV6
+   if (listen->family == AF_INET6)
+     source_addr.in6.sin6_flowinfo = 0;
+ #endif
+   
++  if (daemon->options & OPT_NOWILD) {
++    struct irec *addr;
++    for (addr = daemon->interfaces; addr; addr = addr->next)
++      if (is_same_net(addr->addr.in.sin_addr, source_addr.in.sin_addr, addr->netmask))
++        break;
++    if (!addr)
++      return; //Ignoring query from non-local network
++  }
++
+   if (!(daemon->options & OPT_NOWILD))
+     {
+       struct ifreq ifr;
+ 
+       if (msg.msg_controllen < sizeof(struct cmsghdr))
+ 	return;
+ 
+@@ -733,14 +742,27 @@ unsigned char *tcp_request(int confd, ti
+   unsigned short qtype, gotname;
+   unsigned char c1, c2;
+   /* Max TCP packet + slop */
+   unsigned char *packet = whine_malloc(65536 + MAXDNAME + RRFIXEDSZ);
+   HEADER *header;
+   struct server *last_server;
+   
++  if (daemon->options & OPT_NOWILD) {
++    struct irec *addr;
++    union mysockaddr peer_addr;
++    socklen_t peer_len = sizeof(union mysockaddr);
++    if (getpeername(confd, (struct sockaddr *)&peer_addr, &peer_len) == -1)
++      return packet;
++    for (addr = daemon->interfaces; addr; addr = addr->next)
++      if (is_same_net(addr->addr.in.sin_addr, peer_addr.in.sin_addr, addr->netmask))
++        break;
++    if (!addr)
++      return packet; //Ignoring query from non-local network
++  }
++  
+   while (1)
+     {
+       if (!packet ||
+ 	  !read_write(confd, &c1, 1, 1) || !read_write(confd, &c2, 1, 1) ||
+ 	  !(size = c1 << 8 | c2) ||
+ 	  !read_write(confd, packet, size, 1))
+        	return packet; 

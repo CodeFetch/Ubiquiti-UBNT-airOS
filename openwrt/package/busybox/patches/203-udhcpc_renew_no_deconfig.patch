@@ -1,0 +1,18 @@
+--- a/networking/udhcp/dhcpc.c
++++ b/networking/udhcp/dhcpc.c
+@@ -1097,15 +1097,14 @@ static void perform_renew(void)
+ 	case BOUND:
+ 		change_listen_mode(LISTEN_KERNEL);
+ 	case RENEWING:
+ 	case REBINDING:
+ 		state = RENEW_REQUESTED;
+ 		break;
+ 	case RENEW_REQUESTED: /* impatient are we? fine, square 1 */
+-		udhcp_run_script(NULL, "deconfig");
+ 	case REQUESTING:
+ 	case RELEASED:
+ 		change_listen_mode(LISTEN_RAW);
+ 		state = INIT_SELECTING;
+ 		break;
+ 	case INIT_SELECTING:
+ 		break;

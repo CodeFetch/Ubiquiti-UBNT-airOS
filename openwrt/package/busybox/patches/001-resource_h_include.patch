@@ -1,0 +1,18 @@
+--- a/include/libbb.h
++++ b/include/libbb.h
+@@ -36,14 +36,15 @@
+ /* See the dirname/basename man page for details */
+ #include <libgen.h> /* dirname,basename */
+ #undef basename
+ #define basename dont_use_basename
+ #include <poll.h>
+ #include <sys/ioctl.h>
+ #include <sys/mman.h>
++#include <sys/resource.h>
+ #include <sys/socket.h>
+ #include <sys/stat.h>
+ #include <sys/time.h>
+ #include <sys/types.h>
+ #ifndef major
+ # include <sys/sysmacros.h>
+ #endif

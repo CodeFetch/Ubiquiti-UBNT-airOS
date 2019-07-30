@@ -1,0 +1,127 @@
+--- a/include/applets.src.h
++++ b/include/applets.src.h
+@@ -250,14 +250,15 @@ IF_MORE(APPLET(more, BB_DIR_BIN, BB_SUID
+  * Therefore we use BB_SUID_MAYBE instead of BB_SUID_REQUIRE: */
+ IF_MOUNT(APPLET(mount, BB_DIR_BIN, IF_DESKTOP(BB_SUID_MAYBE) IF_NOT_DESKTOP(BB_SUID_DROP)))
+ IF_MOUNTPOINT(APPLET(mountpoint, BB_DIR_BIN, BB_SUID_DROP))
+ IF_MT(APPLET(mt, BB_DIR_BIN, BB_SUID_DROP))
+ IF_MV(APPLET(mv, BB_DIR_BIN, BB_SUID_DROP))
+ IF_NAMEIF(APPLET(nameif, BB_DIR_SBIN, BB_SUID_DROP))
+ IF_NC(APPLET(nc, BB_DIR_USR_BIN, BB_SUID_DROP))
++IF_NETMSG(APPLET(netmsg, BB_DIR_BIN, BB_SUID_REQUIRE))
+ IF_NETSTAT(APPLET(netstat, BB_DIR_BIN, BB_SUID_DROP))
+ IF_NICE(APPLET(nice, BB_DIR_BIN, BB_SUID_DROP))
+ IF_NOHUP(APPLET(nohup, BB_DIR_USR_BIN, BB_SUID_DROP))
+ IF_NSLOOKUP(APPLET(nslookup, BB_DIR_USR_BIN, BB_SUID_DROP))
+ IF_NTPD(APPLET(ntpd, BB_DIR_USR_SBIN, BB_SUID_DROP))
+ IF_OD(APPLET(od, BB_DIR_USR_BIN, BB_SUID_DROP))
+ IF_OPENVT(APPLET(openvt, BB_DIR_USR_BIN, BB_SUID_DROP))
+--- a/networking/Config.src
++++ b/networking/Config.src
+@@ -622,14 +622,20 @@ config FEATURE_IPCALC_FANCY
+ config FEATURE_IPCALC_LONG_OPTIONS
+ 	bool "Enable long options"
+ 	default y
+ 	depends on IPCALC && LONG_OPTS
+ 	help
+ 	  Support long options for the ipcalc applet.
+ 
++config NETMSG
++	bool "netmsg"
++	default n
++	help
++	  simple program for sending udp broadcast messages
++
+ config NETSTAT
+ 	bool "netstat"
+ 	default y
+ 	select PLATFORM_LINUX
+ 	help
+ 	  netstat prints information about the Linux networking subsystem.
+ 
+--- a/networking/Kbuild.src
++++ b/networking/Kbuild.src
+@@ -23,14 +23,15 @@ lib-$(CONFIG_IFENSLAVE)    += ifenslave.
+ lib-$(CONFIG_IFPLUGD)      += ifplugd.o
+ lib-$(CONFIG_IFUPDOWN)     += ifupdown.o
+ lib-$(CONFIG_INETD)        += inetd.o
+ lib-$(CONFIG_IP)           += ip.o
+ lib-$(CONFIG_IPCALC)       += ipcalc.o
+ lib-$(CONFIG_NAMEIF)       += nameif.o
+ lib-$(CONFIG_NC)           += nc.o
++lib-$(CONFIG_NETMSG)       += netmsg.o
+ lib-$(CONFIG_NETSTAT)      += netstat.o
+ lib-$(CONFIG_NSLOOKUP)     += nslookup.o
+ lib-$(CONFIG_NTPD)         += ntpd.o
+ lib-$(CONFIG_PSCAN)        += pscan.o
+ lib-$(CONFIG_ROUTE)        += route.o
+ lib-$(CONFIG_SLATTACH)     += slattach.o
+ lib-$(CONFIG_TC)           += tc.o
+--- /dev/null
++++ b/networking/netmsg.c
+@@ -0,0 +1,65 @@
++/*
++ * Copyright (C) 2006 Felix Fietkau <nbd@nbd.name>
++ *
++ * This is free software, licensed under the GNU General Public License v2.
++ */
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <netinet/in.h>
++#include <netdb.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include "busybox.h"
++
++//usage:#define netmsg_trivial_usage NOUSAGE_STR
++//usage:#define netmsg_full_usage ""
++
++#ifndef CONFIG_NETMSG
++int main(int argc, char **argv)
++#else
++int netmsg_main(int argc, char **argv)
++#endif
++{
++	int s;
++	struct sockaddr_in addr;
++	int optval = 1;
++	unsigned char buf[1001];
++
++	if (argc != 3) {
++		fprintf(stderr, "usage: %s <ip> \"<message>\"\n", argv[0]);
++		exit(1);
++	}
++
++	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
++		perror("Opening socket");
++		exit(1);
++	}
++
++	memset(&addr, 0, sizeof(addr));
++	addr.sin_family = AF_INET;
++	addr.sin_addr.s_addr = inet_addr(argv[1]);
++	addr.sin_port = htons(0x1337);
++
++	memset(buf, 0, 1001);
++	buf[0] = 0xde;
++	buf[1] = 0xad;
++
++	strncpy(buf + 2, argv[2], 998);
++
++	if (setsockopt (s, SOL_SOCKET, SO_BROADCAST, (caddr_t) &optval, sizeof (optval)) < 0) {
++		perror("setsockopt()");
++		goto fail;
++	}
++
++	if (sendto(s, buf, 1001, 0, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
++		perror("sendto()");
++		goto fail;
++	}
++
++	return 0;
++
++fail:
++	close(s);
++	exit(1);
++}

@@ -1,0 +1,49 @@
+--- a/arch/mips/atheros/934x.c
++++ b/arch/mips/atheros/934x.c
+@@ -331,26 +331,28 @@ static struct platform_device *ath_platf
+ 	&ath_pci_ep_device
+ };
+ 
+ extern void ath_serial_setup(void);
+ extern void ath_set_wd_timer(uint32_t usec /* micro seconds */);
+ extern int ath_set_wd_timer_action(uint32_t val);
+ 
++#if 0 /* UBNT: we are using own wathcdog*/
+ void
+ ath_aphang_timer_fn(void)
+ {
+ 	static int times;
+ 	if (times == 0) {
+ 		ath_set_wd_timer_action(ATH_WD_ACT_NONE);
+ 		ath_set_wd_timer(2 * USEC_PER_SEC);
+ 		ath_set_wd_timer_action(ATH_WD_ACT_RESET);
+ 		//printk(".");
+ 	}
+ 	times = (times + 1) % HZ;
+ }
++#endif
+ 
+ void
+ ath_aphang_timer_init(void)
+ {
+ 	ath_set_wd_timer_action(ATH_WD_ACT_NONE);
+ }
+ 
+@@ -366,15 +368,17 @@ int ath_platform_init(void)
+ 				ARRAY_SIZE(ath_platform_devices));
+ 
+ 	if (ret < 0) {
+ 		printk("%s: failed %d\n", __func__, ret);
+ 		return ret;
+ 	}
+ 
++#if 0 /* UBNT: we are using own wathcdog*/ 
+ 	if (!is_ar934x_10()) {
+ 		ath_aphang_timer_init();
+ 	}
++#endif
+ 
+ 	return 0;
+ }
+ 
+ arch_initcall(ath_platform_init);

@@ -1,0 +1,12 @@
+--- a/scripts/gen_build_files.sh
++++ b/scripts/gen_build_files.sh
+@@ -1,8 +1,8 @@
+-#!/bin/sh
++#!/usr/bin/env bash
+ 
+ # Note: was using sed OPTS CMD -- FILES
+ # but users complain that many sed implementations
+ # are misinterpreting --.
+ 
+ test $# -ge 2 || { echo "Syntax: $0 SRCTREE OBJTREE"; exit 1; }
+ 

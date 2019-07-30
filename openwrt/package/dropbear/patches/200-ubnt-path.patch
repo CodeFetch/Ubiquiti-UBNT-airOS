@@ -1,0 +1,24 @@
+--- a/options.h
++++ b/options.h
+@@ -34,6 +34,10 @@
+ #ifndef ECDSA_PRIV_FILENAME
+ #define ECDSA_PRIV_FILENAME "/etc/dropbear/dropbear_ecdsa_host_key"
+ #endif
++#ifndef AUTHORIZED_KEYS
++#define AUTHORIZED_KEYS "/etc/dropbear/authorized_keys"
++#endif
++
+ 
+ /* Set NON_INETD_MODE if you require daemon functionality (ie Dropbear listens
+  * on chosen ports and keeps accepting connections. This is the default.
+--- a/svr-authpubkey.c
++++ b/svr-authpubkey.c
+@@ -363,7 +363,7 @@ static int checkpubkey(char* algo, unsig
+ 	m_free(filename);
+ 
+ 	if (ret != DROPBEAR_SUCCESS)
+-		ret = checkpubkeyfile("/etc/dropbear/authorized_keys", algo, algolen, keyblob, keybloblen);
++		ret = checkpubkeyfile(AUTHORIZED_KEYS, algo, algolen, keyblob, keybloblen);
+ 
+ 	TRACE(("leave checkpubkey: ret=%d", ret))
+ 	return ret;

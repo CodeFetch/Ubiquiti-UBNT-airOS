@@ -1,0 +1,867 @@
+--- a/sysklogd/syslogd.c
++++ b/sysklogd/syslogd.c
+@@ -62,52 +62,84 @@
+ #define _PATH_LOG	"/dev/log"
+ #endif
+ 
+ #include <sys/un.h>
+ #include <sys/uio.h>
+ 
+ #if ENABLE_FEATURE_REMOTE_LOG
++#include <linux/tcp.h>
+ #include <netinet/in.h>
+ #endif
+ 
+ #if ENABLE_FEATURE_IPC_SYSLOG
+ #include <sys/ipc.h>
+ #include <sys/sem.h>
+ #include <sys/shm.h>
+ #endif
+ 
+ 
+ #define DEBUG 0
++#define KEEPALIVE 1
+ 
+ /* MARK code is not very useful, is bloat, and broken:
+  * can deadlock if alarmed to make MARK while writing to IPC buffer
+  * (semaphores are down but do_mark routine tries to down them again) */
+ #undef SYSLOGD_MARK
+ 
+ /* Write locking does not seem to be useful either */
+ #undef SYSLOGD_WRLOCK
+ 
+ enum {
+ 	MAX_READ = CONFIG_FEATURE_SYSLOGD_READ_BUFFER_SIZE,
+ 	DNS_WAIT_SEC = 2 * 60,
++	MIN_REM_CONN_WAIT_SEC = 14,
++	SELECT_TIMEOUT_SEC = 5,
+ };
+ 
++typedef enum {
++	DISCONNECTED = 1,
++	CONNECTING,
++	CONNECTED,
++	WRITE_BLOCKED,
++	GET_STATE = 99,
++} connection_states;
++
+ /* Semaphore operation structures */
+ struct shbuf_ds {
+ 	int32_t size;   /* size of data - 1 */
+ 	int32_t tail;   /* end of message list */
+ 	char data[1];   /* data/messages */
+ };
+ 
++#define CB_ITEM_COUNT 50
++
++struct cbuffer {
++	int size;
++	int start;
++	int count;
++	void **element;
++};
++typedef struct cbuffer cbuffer_t;
++
++struct message {
++	int len;
++	char *data[0];
++};
++typedef struct message message_t;
++
+ #if ENABLE_FEATURE_REMOTE_LOG
+ typedef struct {
+ 	int remoteFD;
++	int tcp;                           \
+ 	unsigned last_dns_resolve;
+ 	len_and_sockaddr *remoteAddr;
+ 	const char *remoteHostname;
++	unsigned last_conn_attempt;
++	connection_states	connection_state;
++	cbuffer_t 	cbuffer;
+ } remoteHost_t;
+ #endif
+ 
+ typedef struct logFile_t {
+ 	const char *path;
+ 	int fd;
+ 	time_t last_log_time;
+@@ -147,14 +179,17 @@ IF_FEATURE_IPC_SYSLOG( \
+ ) \
+ IF_FEATURE_SYSLOGD_CFG( \
+ 	logRule_t *log_rules; \
+ ) \
+ IF_FEATURE_KMSG_SYSLOG( \
+ 	int kmsgfd; \
+ 	int primask; \
++) \
++IF_FEATURE_REMOTE_LOG( \
++	int tcp; \
+ )
+ 
+ struct init_globals {
+ 	GLOBALS
+ };
+ 
+ struct globals {
+@@ -189,14 +224,17 @@ static const struct init_globals init_da
+ 	.markInterval = 20 * 60,
+ #endif
+ 	.logLevel = 8,
+ #if ENABLE_FEATURE_ROTATE_LOGFILE
+ 	.logFileSize = 200 * 1024,
+ 	.logFileRotate = 1,
+ #endif
++#if ENABLE_FEATURE_REMOTE_LOG
++	.tcp = 0,
++#endif
+ #if ENABLE_FEATURE_IPC_SYSLOG
+ 	.shmid = -1,
+ 	.s_semid = -1,
+ 	.shm_size = ((CONFIG_FEATURE_IPC_SYSLOG_BUFFER_SIZE)*1024), /* default shm size */
+ 	.SMwup = { {1, -1, IPC_NOWAIT} },
+ 	.SMwdn = { {0, 0}, {1, 0}, {1, +1} },
+ #endif
+@@ -215,53 +253,63 @@ enum {
+ 	OPTBIT_outfile, // -O
+ 	OPTBIT_loglevel, // -l
+ 	OPTBIT_small, // -S
+ 	IF_FEATURE_ROTATE_LOGFILE(OPTBIT_filesize   ,)	// -s
+ 	IF_FEATURE_ROTATE_LOGFILE(OPTBIT_rotatecnt  ,)	// -b
+ 	IF_FEATURE_REMOTE_LOG(    OPTBIT_remotelog  ,)	// -R
+ 	IF_FEATURE_REMOTE_LOG(    OPTBIT_locallog   ,)	// -L
++	IF_FEATURE_REMOTE_LOG(    OPTBIT_tcp   		,)	// -t
+ 	IF_FEATURE_IPC_SYSLOG(    OPTBIT_circularlog,)	// -C
+ 	IF_FEATURE_SYSLOGD_DUP(   OPTBIT_dup        ,)	// -D
+ 	IF_FEATURE_SYSLOGD_CFG(   OPTBIT_cfg        ,)	// -f
+ 	IF_FEATURE_KMSG_SYSLOG(   OPTBIT_kmsg       ,)	// -K
+ 
+ 	OPT_mark        = 1 << OPTBIT_mark    ,
+ 	OPT_nofork      = 1 << OPTBIT_nofork  ,
+ 	OPT_outfile     = 1 << OPTBIT_outfile ,
+ 	OPT_loglevel    = 1 << OPTBIT_loglevel,
+ 	OPT_small       = 1 << OPTBIT_small   ,
+ 	OPT_filesize    = IF_FEATURE_ROTATE_LOGFILE((1 << OPTBIT_filesize   )) + 0,
+ 	OPT_rotatecnt   = IF_FEATURE_ROTATE_LOGFILE((1 << OPTBIT_rotatecnt  )) + 0,
+ 	OPT_remotelog   = IF_FEATURE_REMOTE_LOG(    (1 << OPTBIT_remotelog  )) + 0,
+ 	OPT_locallog    = IF_FEATURE_REMOTE_LOG(    (1 << OPTBIT_locallog   )) + 0,
++	OPT_tcp			= IF_FEATURE_REMOTE_LOG(    (1 << OPTBIT_tcp	    )) + 0,
+ 	OPT_circularlog = IF_FEATURE_IPC_SYSLOG(    (1 << OPTBIT_circularlog)) + 0,
+ 	OPT_dup         = IF_FEATURE_SYSLOGD_DUP(   (1 << OPTBIT_dup        )) + 0,
+ 	OPT_cfg         = IF_FEATURE_SYSLOGD_CFG(   (1 << OPTBIT_cfg        )) + 0,
+ 	OPT_kmsg        = IF_FEATURE_KMSG_SYSLOG(   (1 << OPTBIT_kmsg       )) + 0,
+ };
+ #define OPTION_STR "m:nO:l:S" \
+ 	IF_FEATURE_ROTATE_LOGFILE("s:" ) \
+ 	IF_FEATURE_ROTATE_LOGFILE("b:" ) \
+ 	IF_FEATURE_REMOTE_LOG(    "R:" ) \
+ 	IF_FEATURE_REMOTE_LOG(    "L"  ) \
++	IF_FEATURE_REMOTE_LOG(    "t"  ) \
+ 	IF_FEATURE_IPC_SYSLOG(    "C::") \
+ 	IF_FEATURE_SYSLOGD_DUP(   "D"  ) \
+ 	IF_FEATURE_SYSLOGD_CFG(   "f:" ) \
+ 	IF_FEATURE_KMSG_SYSLOG(   "K"  )
+ #define OPTION_DECL *opt_m, *opt_l \
+ 	IF_FEATURE_ROTATE_LOGFILE(,*opt_s) \
+ 	IF_FEATURE_ROTATE_LOGFILE(,*opt_b) \
+ 	IF_FEATURE_IPC_SYSLOG(    ,*opt_C = NULL) \
+ 	IF_FEATURE_SYSLOGD_CFG(   ,*opt_f = NULL)
++#if ENABLE_FEATURE_REMOTE_LOG
+ #define OPTION_PARAM &opt_m, &(G.logFile.path), &opt_l \
+ 	IF_FEATURE_ROTATE_LOGFILE(,&opt_s) \
+ 	IF_FEATURE_ROTATE_LOGFILE(,&opt_b) \
+ 	IF_FEATURE_REMOTE_LOG(    ,&remoteAddrList) \
+ 	IF_FEATURE_IPC_SYSLOG(    ,&opt_C) \
+ 	IF_FEATURE_SYSLOGD_CFG(   ,&opt_f)
++#else
++#define OPTION_PARAM &opt_m, &G.logFilePath, &opt_l \
++	USE_FEATURE_ROTATE_LOGFILE(,&opt_s) \
++	USE_FEATURE_ROTATE_LOGFILE(,&opt_b) \
++	USE_FEATURE_IPC_SYSLOG(    ,&opt_C)
++#endif //ENABLE_FEATURE_REMOTE_LOG
+ 
+ 
+ #if ENABLE_FEATURE_SYSLOGD_CFG
+ static const CODE* find_by_name(char *name, const CODE* c_set)
+ {
+ 	for (; c_set->c_name; c_set++) {
+ 		if (strcmp(name, c_set->c_name) == 0)
+@@ -444,14 +492,96 @@ static void parse_syslogdcfg(const char
+ #error Sorry, you must set the syslogd buffer size to at least 4KB.
+ #error Please check CONFIG_FEATURE_IPC_SYSLOG_BUFFER_SIZE
+ #endif
+ 
+ /* our shared key (syslogd.c and logread.c must be in sync) */
+ enum { KEY_ID = 0x414e4547 }; /* "GENA" */
+ 
++#if ENABLE_FEATURE_REMOTE_LOG
++static void cb_init(cbuffer_t *cbuffer, int size) {
++	cbuffer->size = size;
++	cbuffer->start = 0;
++	cbuffer->count = 0;
++	cbuffer->element = malloc(sizeof(cbuffer->element)*size);
++}
++
++static int cb_full(cbuffer_t *cbuffer) {
++	return (cbuffer->count == cbuffer->size);
++}
++
++static int cb_empty(cbuffer_t *cbuffer) {
++	return (cbuffer->count == 0);
++}
++
++static void cb_write_failed(cbuffer_t *cbuffer) {
++	if (!cb_full(cbuffer)) {
++		cbuffer->count++;
++		if (cbuffer->start > 0) {
++			cbuffer->start--;
++		} else {
++			cbuffer->start = cbuffer->size - 1;
++		}
++	}
++}
++
++static void * cb_read(cbuffer_t *cbuffer) {
++	void * element;
++	if (cb_empty(cbuffer)) {
++		if (DEBUG) printf("circular buffer underflow\n");
++		return 0;
++	} else {
++		element = cbuffer->element[cbuffer->start];
++		cbuffer->start++;
++		cbuffer->count--;
++		if (cbuffer->start == cbuffer->size) {
++			cbuffer->start = 0;
++		}
++
++		if (DEBUG) {
++			((char *)((message_t *)element)->data)[((message_t *)element)->len] = '\0';
++			printf("/------------------------------------READ-------------------------------------\\\n");
++			printf("cb_read: start:%d, count:%d, free:%d\n", cbuffer->start, cbuffer->count, CB_ITEM_COUNT - cbuffer->count);
++			printf("cb_read: %s\n", (char *)((message_t *)element)->data);
++			printf("\\-----------------------------------------------------------------------------/\n");
++		}
++		return element;
++	}
++}
++
++static int cb_write(cbuffer_t *cbuffer, void *data, int len) {
++	int cb_index;
++	if (cb_full(cbuffer)) {
++		if (DEBUG) printf("circular buffer overflow\n");
++		return 0;
++	} else {
++		message_t message;
++		char *tbuff = malloc(len + sizeof(message) + 1);
++		if (tbuff == NULL)
++			return 0;
++		message.len = len;
++		memcpy(tbuff, &message, sizeof(message));
++		memcpy(&(((message_t *)tbuff)->data), data, strlen(data));
++
++		cb_index = cbuffer->start + cbuffer->count++;
++		if (cb_index >= cbuffer->size) {
++			cb_index = cb_index - cbuffer->size;
++		}
++		cbuffer->element[cb_index] = tbuff;
++		if (DEBUG) {
++			((char *)((message_t *)tbuff)->data)[len] = '\0';
++			printf("/------------------------------------WRITE------------------------------------\\\n");
++			printf("cb_write: %s\n", (char *)((message_t *)tbuff)->data);
++			printf("cb_write: index:%d, start:%d, count:%d, free:%d\n", cb_index, cbuffer->start, cbuffer->count, CB_ITEM_COUNT - cbuffer->count);
++			printf("\\-----------------------------------------------------------------------------/\n");
++		}
++		return 1;
++	}
++}
++#endif //ENABLE_FEATURE_REMOTE_LOG
++
+ static void ipcsyslog_cleanup(void)
+ {
+ 	if (G.shmid != -1) {
+ 		shmdt(G.shbuf);
+ 	}
+ 	if (G.shmid != -1) {
+ 		shmctl(G.shmid, IPC_RMID, NULL);
+@@ -767,20 +897,26 @@ static void timestamp_and_log(int pri, c
+ 			return;
+ 		}
+ #endif
+ 		log_locally(now, G.printbuf, &G.logFile);
+ 	}
+ }
+ 
+-static void timestamp_and_log_internal(const char *msg)
++static void
++timestamp_and_log_internal(const char* format, ...)
+ {
++	char dest[256];
++	va_list argptr;
++	va_start(argptr, format);
++	vsprintf(dest, format, argptr);
++	va_end(argptr);
+ 	/* -L, or no -R */
+ 	if (ENABLE_FEATURE_REMOTE_LOG && !(option_mask32 & OPT_locallog))
+ 		return;
+-	timestamp_and_log(LOG_SYSLOG | LOG_INFO, (char*)msg, 0);
++	timestamp_and_log(LOG_SYSLOG | LOG_INFO, dest, 0);
+ }
+ 
+ /* tmpbuf[len] is a NUL byte (set by caller), but there can be other,
+  * embedded NULs. Split messages on each of these NULs, parse prio,
+  * escape control chars and log each locally. */
+ static void split_escape_and_log(char *tmpbuf, int len)
+ {
+@@ -851,43 +987,240 @@ static NOINLINE int create_socket(void)
+ 		safe_strncpy(sunx.sun_path, dev_log_name, sizeof(sunx.sun_path));
+ 		free(dev_log_name);
+ 	}
+ 	unlink(sunx.sun_path);
+ 
+ 	sock_fd = xsocket(AF_UNIX, SOCK_DGRAM, 0);
+ 	xbind(sock_fd, (struct sockaddr *) &sunx, sizeof(sunx));
++	fcntl(sock_fd, F_SETFL, fcntl(sock_fd, F_GETFL, 0) | O_NONBLOCK);
+ 	chmod(_PATH_LOG, 0666);
+ 
+ 	return sock_fd;
+ }
+ 
+ #if ENABLE_FEATURE_REMOTE_LOG
+-static int try_to_resolve_remote(remoteHost_t *rh)
++static int conn_state(remoteHost_t *rh, int new_state)
+ {
++	if (new_state == GET_STATE) {
++		if (rh->remoteFD == -1) {
++			rh->connection_state = DISCONNECTED;
++		}
++	} else {
++		if (DEBUG)
++			printf("state transition from %d to %d\n", rh->connection_state, new_state);
++		rh->connection_state = new_state;
++	}
++	return rh->connection_state;
++}
++
++static void keep_alive(int* sock_fd, int state)
++{
++	int optval;
++	socklen_t len = sizeof(optval);
++
++	optval = state;
++	if(setsockopt(*sock_fd, SOL_SOCKET, SO_KEEPALIVE, (void*)&optval, len) <0)
++		if (DEBUG) perror("setsockopt(SO_KEEPALIVE)");
++
++	/*	the interval between the last data packet sent (simple ACKs are not*/
++	/*	considered data) and the first keepalive probe; after the connection*/
++	/*	is marked to need keepalive, this counter is not used any further*/
++	optval = 60;
++	if(setsockopt(*sock_fd, IPPROTO_TCP, TCP_KEEPIDLE, (void*)&optval, len) <0)
++		if (DEBUG) perror("setsockopt(TCP_KEEPIDLE)");
++
++	/*	the number of unacknowledged probes to send before considering*/
++	/*	the connection dead and notifying the application layer*/
++	optval = 10;
++	if(setsockopt(*sock_fd, IPPROTO_TCP, TCP_KEEPCNT, (void*)&optval, len) <0)
++		if (DEBUG) perror("setsockopt(TCP_KEEPCNT)");
++
++	/*	the interval between subsequential keepalive probes, regardless*/
++	/*	of what the connection has exchanged in the meantime*/
++	optval = 6;
++	if(setsockopt(*sock_fd, IPPROTO_TCP, TCP_KEEPINTVL, (void*)&optval, len) <0)
++		if (DEBUG) perror("getsockopt(TCP_KEEPINTVL)");
++}
++
++static NOINLINE int try_to_resolve_remote(remoteHost_t *rh)
++{
++	int fd = 0;
++	int rv;
++	unsigned tnow = monotonic_sec();
++
++
++	/* Don't connect too often*/
++	if ((tnow - rh->last_conn_attempt) < MIN_REM_CONN_WAIT_SEC) {
++		if (DEBUG)
++			printf("connection attempt was %d secs ago\n", tnow - rh->last_conn_attempt);
++		return -1;
++	}
++	rh->last_conn_attempt = tnow;
++
++	if (rh->remoteFD != -1) {
++		close(rh->remoteFD);
++		rh->remoteFD = -1;
++	}
++
+ 	if (!rh->remoteAddr) {
+ 		unsigned now = monotonic_sec();
+ 
+ 		/* Don't resolve name too often - DNS timeouts can be big */
+ 		if ((now - rh->last_dns_resolve) < DNS_WAIT_SEC)
+ 			return -1;
+ 		rh->last_dns_resolve = now;
+ 		rh->remoteAddr = host2sockaddr(rh->remoteHostname, 514);
+ 		if (!rh->remoteAddr)
+ 			return -1;
+ 	}
+-	return xsocket(rh->remoteAddr->u.sa.sa_family, SOCK_DGRAM, 0);
++	if (DEBUG)
++		printf("creating %s socket\n", G.tcp ? "SOCK_STREAM" : "SOCK_DGRAM");
++	fd = xsocket(rh->remoteAddr->u.sa.sa_family, G.tcp ? SOCK_STREAM : SOCK_DGRAM, 0);
++	fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
++
++	if (KEEPALIVE && G.tcp)
++		keep_alive(&fd, 1);
++	rv = connect(fd, &rh->remoteAddr->u.sa, rh->remoteAddr->len);
++	if (rv < 0) {
++		if (errno == EINPROGRESS)
++			conn_state(rh, CONNECTING);
++		else
++			timestamp_and_log_internal("syslogd: connect() error (rv %d) %d - %s", rv, errno, strerror(errno));
++	} else {
++		if (DEBUG) printf("connected immediatelly\n");
++		conn_state(rh, CONNECTED);
++	}
++	rh->remoteFD = fd;
++	return fd;
+ }
+-#endif
++
++
++/* tmpbuf[len] is a NUL byte (set by caller), but there can be other,
++ * embedded NULs. Split messages on each of these NULs, parse prio,
++ * escape control chars, and return messages. */
++static int split_escape(char *tmpbuf, int len)
++{
++	char *p = tmpbuf;
++	int pri = 0;
++	tmpbuf += len;
++	while (p < tmpbuf) {
++		char c;
++		char *q = G.parsebuf;
++		pri = (LOG_USER | LOG_NOTICE);
++		if (*p == '<') {
++			pri = bb_strtou(p + 1, &p, 10);
++			if (*p == '>') p++;
++			if (pri & ~(LOG_FACMASK | LOG_PRIMASK))
++				pri = (LOG_USER | LOG_NOTICE);
++		}
++		while ((c = *p++)) {
++			if (c == '\n') c = ' ';
++			if (!(c & ~0x1f) && c != '\t') {
++				*q++ = '^';
++				c += '@'; /* ^@, ^A, ^B... */
++			}
++			*q++ = c;
++		}
++		*q = '\0';
++	}
++
++	return pri;
++}
++
++
++static int msg_insert_hostname(char* recvbuf, int sz)
++{
++	int pri = 0;
++	char *timestamp;
++	char *msg;
++	int len = 0;
++	time_t now;
++
++	/* Stock syslogd sends it '\n'-terminated
++	 * over network, mimic that */
++	recvbuf[sz] = '\0';
++	/***********************************************
++	 * ADD by Evil:
++	 * Take the logmsg, split it in pieces and add
++	 * the hostname to it befor loggin it over the
++	 * network.
++	 **********************************************/
++
++	memset(G.parsebuf, 0, sizeof(G.parsebuf));
++	memset(G.printbuf, 0, sizeof(G.printbuf));
++
++	pri = split_escape(recvbuf,sz);
++	msg = G.parsebuf;
++	len = strlen(G.parsebuf);
++
++	if (len < 16 || msg[3] != ' ' || msg[6] != ' '
++			|| msg[9] != ':' || msg[12] != ':' || msg[15] != ' '
++	   ) {
++		time(&now);
++		timestamp = ctime(&now) + 4; /* skip day of week */
++	} else {
++		now = 0;
++		timestamp = msg;
++		msg += 16;
++	}
++	timestamp[15] = '\0';
++	if (option_mask32 & OPT_small)
++		sprintf(G.printbuf, "<%d>%s %s\n", pri, timestamp, msg);
++	else {
++		char res[20];
++		parse_fac_prio_20(pri, res);
++		sprintf(G.printbuf, "<%d>%s [%.64s] %s %s\n", pri, timestamp, G.hostname, res, msg);
++	}
++	len = strlen(G.printbuf);
++	return len;
++}
++
++#endif // ENABLE_FEATURE_REMOTE_LOG
++
++static int getsockopt_err(int sock_fd)
++{
++	int valopt;
++	socklen_t lon = sizeof(int);
++
++	if (getsockopt(sock_fd, SOL_SOCKET, SO_ERROR, (void*)(&valopt), &lon) < 0) {
++		timestamp_and_log_internal("syslogd: getsockopt() error %d - %s", errno, strerror(errno));
++		return 1;
++	}
++	if (valopt) {
++		if (DEBUG) printf("syslogd: connection error %d - %s\n", valopt, strerror(valopt));
++		return 1;
++	}
++	return 0;
++}
++
++static void get_fd(int fd, fd_set writefds)
++{
++	int i;
++	printf("[ ");
++	for	(i=0; i<fd; i++)
++		if (FD_ISSET(i, &writefds))
++			printf("%d ", i);
++	printf("]");
++}
++
+ 
+ static void do_syslogd(void) NORETURN;
+ static void do_syslogd(void)
+ {
+ #if ENABLE_FEATURE_REMOTE_LOG
+ 	llist_t *item;
+ #endif
++	int sock_fd = -1;
++	int nfds = 0;
++	int rv;
++	fd_set writefds;
++	fd_set readfds;
++	struct timeval tv;
++	ssize_t sz = 0;
++	int remote_log = (ENABLE_FEATURE_REMOTE_LOG && (option_mask32 & OPT_remotelog) && G.remoteHosts);
+ #if ENABLE_FEATURE_SYSLOGD_DUP
+ 	int last_sz = -1;
+ 	char *last_buf;
+ 	char *recvbuf = G.recvbuf;
+ #else
+ #define recvbuf (G.recvbuf)
+ #endif
+@@ -897,103 +1230,214 @@ static void do_syslogd(void)
+ 	signal_no_SA_RESTART_empty_mask(SIGINT, record_signo);
+ 	//signal_no_SA_RESTART_empty_mask(SIGQUIT, record_signo);
+ 	signal(SIGHUP, SIG_IGN);
+ #ifdef SYSLOGD_MARK
+ 	signal(SIGALRM, do_mark);
+ 	alarm(G.markInterval);
+ #endif
+-	xmove_fd(create_socket(), STDIN_FILENO);
++	sock_fd = create_socket();
+ 
+ 	if (option_mask32 & OPT_circularlog)
+ 		ipcsyslog_init();
+ 
+ 	if (option_mask32 & OPT_kmsg)
+ 		kmsg_init();
+ 
+ 	timestamp_and_log_internal("syslogd started: BusyBox v" BB_VER);
++	if (DEBUG) printf("remote_log:%d\n", remote_log);
+ 
+ 	while (!bb_got_signal) {
+-		ssize_t sz;
++		tv.tv_sec = SELECT_TIMEOUT_SEC;
++		tv.tv_usec = 0;
+ 
+ #if ENABLE_FEATURE_SYSLOGD_DUP
+ 		last_buf = recvbuf;
+ 		if (recvbuf == G.recvbuf)
+ 			recvbuf = G.recvbuf + MAX_READ;
+ 		else
+ 			recvbuf = G.recvbuf;
+ #endif
+- read_again:
+-		sz = read(STDIN_FILENO, recvbuf, MAX_READ - 1);
+-		if (sz < 0) {
+-			if (!bb_got_signal)
+-				bb_perror_msg("read from %s", _PATH_LOG);
+-			break;
+-		}
+-
+-		/* Drop trailing '\n' and NULs (typically there is one NUL) */
+-		while (1) {
+-			if (sz == 0)
+-				goto read_again;
+-			/* man 3 syslog says: "A trailing newline is added when needed".
+-			 * However, neither glibc nor uclibc do this:
+-			 * syslog(prio, "test")   sends "test\0" to /dev/log,
+-			 * syslog(prio, "test\n") sends "test\n\0".
+-			 * IOW: newline is passed verbatim!
+-			 * I take it to mean that it's syslogd's job
+-			 * to make those look identical in the log files. */
+-			if (recvbuf[sz-1] != '\0' && recvbuf[sz-1] != '\n')
+-				break;
+-			sz--;
+-		}
+-#if ENABLE_FEATURE_SYSLOGD_DUP
+-		if ((option_mask32 & OPT_dup) && (sz == last_sz))
+-			if (memcmp(last_buf, recvbuf, sz) == 0)
+-				continue;
+-		last_sz = sz;
+-#endif
+-#if ENABLE_FEATURE_REMOTE_LOG
+-		/* Stock syslogd sends it '\n'-terminated
+-		 * over network, mimic that */
+-		recvbuf[sz] = '\n';
+-
+-		/* We are not modifying log messages in any way before send */
+-		/* Remote site cannot trust _us_ anyway and need to do validation again */
+-		for (item = G.remoteHosts; item != NULL; item = item->link) {
+-			remoteHost_t *rh = (remoteHost_t *)item->data;
++		FD_ZERO(&readfds);
++		FD_SET(sock_fd, &readfds);
++		nfds = sock_fd + 1;
++#if ENABLE_FEATURE_REMOTE_LOG
++//		for (item = G.remoteHosts; item != NULL; item = item->link) {
++		/* For now we just stay with a single remote host */
++		if (G.remoteHosts) {
++			remoteHost_t *rh = (remoteHost_t*)G.remoteHosts->data;
+ 
+-			if (rh->remoteFD == -1) {
++			if (conn_state(rh, GET_STATE) == DISCONNECTED) {
+ 				rh->remoteFD = try_to_resolve_remote(rh);
+-				if (rh->remoteFD == -1)
+-					continue;
+ 			}
+ 
+-			/* Send message to remote logger.
+-			 * On some errors, close and set remoteFD to -1
+-			 * so that DNS resolution is retried.
+-			 */
+-			if (sendto(rh->remoteFD, recvbuf, sz+1,
+-					MSG_DONTWAIT | MSG_NOSIGNAL,
+-					&(rh->remoteAddr->u.sa), rh->remoteAddr->len) == -1
+-			) {
+-				switch (errno) {
+-				case ECONNRESET:
+-				case ENOTCONN: /* paranoia */
+-				case EPIPE:
+-					close(rh->remoteFD);
+-					rh->remoteFD = -1;
+-					free(rh->remoteAddr);
+-					rh->remoteAddr = NULL;
++			/* Remote log write routine */
++			while (!cb_empty(&rh->cbuffer)) {
++				if ((conn_state(rh, GET_STATE) == CONNECTED) || (conn_state(rh, GET_STATE) == WRITE_BLOCKED)) {
++					int len = 0;
++					message_t *msg = cb_read(&rh->cbuffer);
++					if (msg) {
++						len = msg_insert_hostname((char*)msg->data, msg->len);
++						if (DEBUG) printf("send\n");
++						if (!getsockopt_err(rh->remoteFD)) {
++							if (send(rh->remoteFD, G.printbuf, len, MSG_NOSIGNAL) <= 0) {
++								if (errno == EWOULDBLOCK) {
++									conn_state(rh, WRITE_BLOCKED);
++								} else {
++									if (DEBUG) printf("syslogd: %s send() error %d - %s\n", G.tcp ? "TCP" : "UDP", errno, strerror(errno));
++									conn_state(rh, DISCONNECTED);
++								}
++								cb_write_failed(&rh->cbuffer);
++								break;
++							} else {
++								if (DEBUG) printf("freeing msg\n");
++								free(msg);
++							}
++						} else {
++							cb_write_failed(&rh->cbuffer);
++							conn_state(rh, DISCONNECTED);
++						}
++					}
++				} else {
++					break; /* cbuffer loop */
+ 				}
+ 			}
+-		}
+-#endif
+-		if (!ENABLE_FEATURE_REMOTE_LOG || (option_mask32 & OPT_locallog)) {
++
++			/* Add write_sock_fd to fd set to monitor connect/send state while CONNECTING or WRITE_BLOCKED  */
++			FD_ZERO(&writefds);
++			if ((conn_state(rh, GET_STATE) == CONNECTING) || (conn_state(rh, GET_STATE) == WRITE_BLOCKED)) {
++				FD_SET(rh->remoteFD, &writefds);
++				nfds = MAX(rh->remoteFD + 1, nfds);
++			}
++
++			/* Monitoring TCP connection (write_sock_fd) on read fd set while connected*/
++			if (KEEPALIVE) {
++				if (G.tcp && (conn_state(rh, GET_STATE) == CONNECTED)) {
++					FD_SET(rh->remoteFD, &readfds);
++					nfds = MAX(rh->remoteFD + 1, nfds);
++				}
++			}
++
++			if (DEBUG) {
++				printf("select ^ write_fd:%d, read_fd:%d, MAX:%d", rh->remoteFD, sock_fd, nfds);
++				printf(" writefds:");
++				get_fd(nfds, writefds);
++				printf(" readfds:");
++				get_fd(nfds, readfds);
++				printf(" conn_state:%d\n", conn_state(rh, GET_STATE));
++			}
++		} /* G.remoteHosts */
++#endif	// ENABLE_FEATURE_REMOTE_LOG
++
++		/* Local log write routine */
++		if ((sz > 0) && (!ENABLE_FEATURE_REMOTE_LOG || (option_mask32 & OPT_locallog))) {
+ 			recvbuf[sz] = '\0'; /* ensure it *is* NUL terminated */
+ 			split_escape_and_log(recvbuf, sz);
++			sz = 0;
+ 		}
++
++		/* Select blocks there */
++		rv = select(nfds, &readfds, remote_log ? &writefds : NULL, NULL, &tv);
++
++
++		if (rv < 0 && errno != EINTR) {
++			timestamp_and_log_internal("syslogd: select() error %d - %s", errno, strerror(errno));
++		} else if (rv == 0) {
++			if (DEBUG) printf("select() - timeout after %d seconds\n", SELECT_TIMEOUT_SEC);
++		} else {
++			/* Read descriptor routine */
++			if (FD_ISSET(sock_fd, &readfds)) {
++				if (DEBUG) printf("fd is part of readfds set\n");
++				if (!getsockopt_err(sock_fd)) {
++					sz = safe_read(sock_fd, recvbuf, MAX_READ - 1);
++					if (sz < 0) {
++						if (errno == EWOULDBLOCK) {
++							if (DEBUG) printf("read blocked\n");
++						} else {
++							bb_perror_msg_and_die("read from /dev/log");
++						}
++					} else {
++						/* Drop trailing '\n' and NULs (typically there is one NUL) */
++						while (1) {
++							if (sz == 0) {
++								break;
++							}
++							/* man 3 syslog says: "A trailing newline is added when needed".
++							 * However, neither glibc nor uclibc do this:
++							 * syslog(prio, "test")   sends "test\0" to /dev/log,
++							 * syslog(prio, "test\n") sends "test\n\0".
++							 * IOW: newline is passed verbatim!
++							 * I take it to mean that it's syslogd's job
++							 * to make those look identical in the log files. */
++							if (recvbuf[sz-1] != '\0' && recvbuf[sz-1] != '\n')
++								break;
++							sz--;
++						}
++					}
++#if ENABLE_FEATURE_SYSLOGD_DUP
++					if ((option_mask32 & OPT_dup) && (sz == last_sz))
++						if (memcmp(last_buf, recvbuf, sz) == 0)
++							continue;
++					last_sz = sz;
++#endif
++#if ENABLE_FEATURE_REMOTE_LOG
++					/* Some day should enable remote hosts loop,
++					 * but for now we just stay with a single remote host */
++					if (G.remoteHosts && sz)
++					{
++						remoteHost_t *rh = (remoteHost_t*)G.remoteHosts->data;
++						cb_write(&rh->cbuffer, recvbuf, sz);
++					}
++#endif //ENABLE_FEATURE_REMOTE_LOG
++				}
++			} /* read descriptor routine */
++
++			/* Write descriptor routine */
++#if ENABLE_FEATURE_REMOTE_LOG
++			/* Some day should enable remote hosts loop,
++			 * but for now we just stay with a single remote host */
++			if (G.remoteHosts)
++			{
++				remoteHost_t *rh = (remoteHost_t*)G.remoteHosts->data;
++
++				/* Remote host write descriptor routine for connection monitoring */
++				if (FD_ISSET(rh->remoteFD, &writefds)) {
++					if (DEBUG) printf("fd is part of writefds set\n");
++					if ((conn_state(rh, GET_STATE) == CONNECTING) || (conn_state(rh, GET_STATE) == WRITE_BLOCKED)) {
++						if (!getsockopt_err(rh->remoteFD)) {
++							conn_state(rh, CONNECTED);
++							if (DEBUG) printf("%s connected\n", G.tcp ? "SOCK_STREAM" : "SOCK_DGRAM");
++						} else {
++							conn_state(rh, DISCONNECTED);
++						}
++					}
++				}
++
++				/* Write descriptor routine on read fd set for monitoring TCP connection state (keep_alive) */
++				if (KEEPALIVE) {
++					if (FD_ISSET(rh->remoteFD, &readfds)) {
++						int len = 0;
++						if (DEBUG) printf("write_fd is part of readfds set\n");
++						if (conn_state(rh, GET_STATE) == CONNECTED) {
++							len = safe_read(rh->remoteFD, recvbuf, MAX_READ - 1);
++							if (len <= 0) {
++								conn_state(rh, DISCONNECTED);
++								if (len < 0) {
++									if (DEBUG) printf("syslogd: keep_alive() error %d - %s\n", errno, strerror(errno));
++								} else {
++									if (DEBUG) printf("syslogd: keep_alive() - connection closed\n");
++								}
++							}
++						}
++					}
++				}
++
++			} /* G.RemoteHosts */
++#endif //ENABLE_FEATURE_REMOTE_LOG
++		} /* select handling */
++
+ 	} /* while (!bb_got_signal) */
+ 
+ 	timestamp_and_log_internal("syslogd exiting");
+ 	remove_pidfile(CONFIG_PID_FILE_PATH "/syslogd.pid");
+ 	ipcsyslog_cleanup();
+ 	if (option_mask32 & OPT_kmsg)
+ 		kmsg_cleanup();
+@@ -1017,14 +1461,15 @@ int syslogd_main(int argc UNUSED_PARAM,
+ 	opts = getopt32(argv, OPTION_STR, OPTION_PARAM);
+ #if ENABLE_FEATURE_REMOTE_LOG
+ 	while (remoteAddrList) {
+ 		remoteHost_t *rh = xzalloc(sizeof(*rh));
+ 		rh->remoteHostname = llist_pop(&remoteAddrList);
+ 		rh->remoteFD = -1;
+ 		rh->last_dns_resolve = monotonic_sec() - DNS_WAIT_SEC - 1;
++		cb_init(&rh->cbuffer, CB_ITEM_COUNT);
+ 		llist_add_to(&G.remoteHosts, rh);
+ 	}
+ #endif
+ 
+ #ifdef SYSLOGD_MARK
+ 	if (opts & OPT_mark) // -m
+ 		G.markInterval = xatou_range(opt_m, 0, INT_MAX/60) * 60;
+@@ -1035,14 +1480,16 @@ int syslogd_main(int argc UNUSED_PARAM,
+ 		G.logLevel = xatou_range(opt_l, 1, 8);
+ 	//if (opts & OPT_small) // -S
+ #if ENABLE_FEATURE_ROTATE_LOGFILE
+ 	if (opts & OPT_filesize) // -s
+ 		G.logFileSize = xatou_range(opt_s, 0, INT_MAX/1024) * 1024;
+ 	if (opts & OPT_rotatecnt) // -b
+ 		G.logFileRotate = xatou_range(opt_b, 0, 99);
++	if (option_mask32 & OPT_tcp) // -t
++		G.tcp = 1;
+ #endif
+ #if ENABLE_FEATURE_IPC_SYSLOG
+ 	if (opt_C) // -Cn
+ 		G.shm_size = xatoul_range(opt_C, 4, INT_MAX/1024) * 1024;
+ #endif
+ 	/* If they have not specified remote logging, then log locally */
+ 	if (ENABLE_FEATURE_REMOTE_LOG && !(opts & OPT_remotelog)) // -R

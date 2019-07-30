@@ -1,0 +1,31 @@
+Index: linux-2.6.32.71/kernel/signal.c
+===================================================================
+--- linux-2.6.32.71.orig/kernel/signal.c
++++ linux-2.6.32.71/kernel/signal.c
+@@ -910,6 +910,17 @@ out_set:
+ 	return 0;
+ }
+ 
++static void trace_priv_signal(int sig, struct siginfo *info, struct task_struct *p)
++{
++	if (likely((sig != SIGSEGV) && (sig != SIGBUS) && (sig != SIGILL)))
++		return;
++	if (likely(info != SEND_SIG_PRIV))
++		return;
++
++	printk("Sending signal %d process %s pid %d\n", sig, p->comm, p->pid);
++	dump_stack();
++}
++
+ static int send_signal(int sig, struct siginfo *info, struct task_struct *t,
+ 			int group)
+ {
+@@ -921,6 +932,8 @@ static int send_signal(int sig, struct s
+ 		from_ancestor_ns = 1;
+ #endif
+ 
++	trace_priv_signal(sig, info, t);
++
+ 	return __send_signal(sig, info, t, group, from_ancestor_ns);
+ }
+ 
