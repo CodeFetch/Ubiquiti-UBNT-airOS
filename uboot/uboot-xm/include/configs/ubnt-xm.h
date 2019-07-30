@@ -144,7 +144,7 @@
 /*-----------------------------------------------------------------------
  * Configuration
  */
-#define CONFIG_COMMANDS	(( CONFIG_CMD_DFL | CFG_CMD_ELF |	\
+#define CONFIG_COMMANDS	(( CONFIG_CMD_DFL | CFG_CMD_ELF | CFG_CMD_PLL |\
 	CFG_CMD_PING | CFG_CMD_NET | CFG_CMD_ENV | CFG_CMD_JFFS2 |	\
 	CFG_CMD_FLASH | CFG_CMD_RUN | CFG_CMD_MII | CFG_CMD_TFTP_SERVER ) & \
 	~(CFG_CMD_ITEST | CFG_CMD_NFS | CFG_CMD_LOADS | CFG_CMD_LOADB | \
@@ -206,6 +206,7 @@
 /* Ubiquiti */
 #define UBNT_FLASH_DETECT
 // Fallthrough for AR7240
+//#define PLL_CONFIG_VAL	PLL_VAL(396,396,198)
 #define PLL_CONFIG_VAL	PLL_VAL(400,400,200)
 
 
@@ -255,6 +256,8 @@
 #define FLASH_WP_GPIO 0
 #define ENABLE_UBNT_PROTECT_CMD 1
 #endif
+
+#define CONFIG_SUPPORT_PLL_ON_FLASH
 
 #define UNUSED(x) ((void)(x))
 

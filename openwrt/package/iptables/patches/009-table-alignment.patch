@@ -1,0 +1,19 @@
+--- a/libiptc/libiptc.c
++++ b/libiptc/libiptc.c
+@@ -65,15 +65,15 @@ static const char *hooknames[] = {
+ #endif
+ };
+ 
+ /* Convenience structures */
+ struct ipt_error_target
+ {
+ 	STRUCT_ENTRY_TARGET t;
+-	char error[TABLE_MAXNAMELEN];
++	char error[FUNCTION_MAXNAMELEN];
+ };
+ 
+ struct chain_head;
+ struct rule_head;
+ 
+ struct counter_map
+ {

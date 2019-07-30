@@ -48,7 +48,7 @@ ar7240_sys_frequency(u32 *cpu_freq, u32 *ddr_freq, u32 *ahb_freq)
     ahb_div = 
        (((pll & PLL_CONFIG_AHB_DIV_MASK) >> PLL_CONFIG_AHB_DIV_SHIFT) + 1)*2;
 
-    freq = pll_div * ref_div * 5000000; 
+    freq = pll_div * 20000000 / ref_div;
 
     if (cpu_freq)
         *cpu_freq = freq;

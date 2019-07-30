@@ -1,0 +1,147 @@
+Index: linux-2.6.32.71/arch/mips/mm/fault.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/mm/fault.c
++++ linux-2.6.32.71/arch/mips/mm/fault.c
+@@ -136,7 +136,7 @@ bad_area_nosemaphore:
+ 	if (user_mode(regs)) {
+ 		tsk->thread.cp0_badvaddr = address;
+ 		tsk->thread.error_code = write;
+-#if 0
++#if 1
+ 		printk("do_page_fault() #2: sending SIGSEGV to %s for "
+ 		       "invalid %s\n%0*lx (epc == %0*lx, ra == %0*lx)\n",
+ 		       tsk->comm,
+@@ -144,6 +144,8 @@ bad_area_nosemaphore:
+ 		       field, address,
+ 		       field, (unsigned long) regs->cp0_epc,
+ 		       field, (unsigned long) regs->regs[31]);
++		show_regs(regs);
++		show_code((unsigned int __user *)regs->cp0_epc);
+ #endif
+ 		info.si_signo = SIGSEGV;
+ 		info.si_errno = 0;
+Index: linux-2.6.32.71/arch/mips/kernel/traps.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/traps.c
++++ linux-2.6.32.71/arch/mips/kernel/traps.c
+@@ -206,23 +206,24 @@ void dump_stack(void)
+ 
+ EXPORT_SYMBOL(dump_stack);
+ 
+-static void show_code(unsigned int __user *pc)
++void show_code(unsigned int __user *pc)
+ {
+ 	long i;
+ 	unsigned short __user *pc16 = NULL;
+ 
+-	printk("\nCode:");
++	printk("Code:");
+ 
+ 	if ((unsigned long)pc & 1)
+ 		pc16 = (unsigned short __user *)((unsigned long)pc & ~1);
+ 	for(i = -3 ; i < 6 ; i++) {
+ 		unsigned int insn;
+ 		if (pc16 ? __get_user(insn, pc16 + i) : __get_user(insn, pc + i)) {
+-			printk(" (Bad address in epc)\n");
++			printk(" (Bad address in epc)");
+ 			break;
+ 		}
+ 		printk("%c%0*x%c", (i?' ':'['), pc16 ? 4 : 8, insn, (i?' ':']'));
+ 	}
++	printk("\n");
+ }
+ 
+ static void __show_regs(const struct pt_regs *regs)
+@@ -348,7 +349,6 @@ void show_registers(const struct pt_regs
+ 
+ 	show_stacktrace(current, regs);
+ 	show_code((unsigned int __user *) regs->cp0_epc);
+-	printk("\n");
+ }
+ 
+ static DEFINE_SPINLOCK(die_lock);
+Index: linux-2.6.32.71/include/linux/kernel.h
+===================================================================
+--- linux-2.6.32.71.orig/include/linux/kernel.h
++++ linux-2.6.32.71/include/linux/kernel.h
+@@ -349,6 +349,7 @@ extern enum system_states {
+ #define TAINT_CRAP			10
+ 
+ extern void dump_stack(void) __cold;
++void show_code(unsigned int __user *);
+ 
+ enum {
+ 	DUMP_PREFIX_NONE,
+Index: linux-2.6.32.71/arch/mips/kernel/unaligned.c
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/kernel/unaligned.c
++++ linux-2.6.32.71/arch/mips/kernel/unaligned.c
+@@ -101,6 +101,8 @@ static u32 unaligned_action;
+ #endif
+ extern void show_registers(struct pt_regs *regs);
+ 
++#define FIELD sizeof(unsigned long) * 2
++
+ static void emulate_load_store_insn(struct pt_regs *regs,
+ 	void __user *addr, unsigned int __user *pc)
+ {
+@@ -481,19 +483,37 @@ fault:
+ 	if (fixup_exception(regs))
+ 		return;
+ 
+-	die_if_kernel("Unhandled kernel unaligned access", regs);
++	die_if_kernel("Unhandled(fault) kernel unaligned access", regs);
++	printk("do_ade(): sending SIGSEGV to %s (epc == %0*lx, ra == %0*lx)\n",
++	       current->comm,
++	       FIELD, (unsigned long) regs->cp0_epc,
++	       FIELD, (unsigned long) regs->regs[31]);
++	show_regs(regs);
++	show_code((unsigned int __user *)regs->cp0_epc);
+ 	force_sig(SIGSEGV, current);
+ 
+ 	return;
+ 
+ sigbus:
+-	die_if_kernel("Unhandled kernel unaligned access", regs);
++	die_if_kernel("Unhandled(sigbus) kernel unaligned access", regs);
++	printk("do_ade() #1: sending SIGBUS to %s (epc == %0*lx, ra == %0*lx)\n",
++	       current->comm,
++	       FIELD, (unsigned long) regs->cp0_epc,
++	       FIELD, (unsigned long) regs->regs[31]);
++	show_regs(regs);
++	show_code((unsigned int __user *)regs->cp0_epc);
+ 	force_sig(SIGBUS, current);
+ 
+ 	return;
+ 
+ sigill:
+ 	die_if_kernel("Unhandled kernel unaligned access or invalid instruction", regs);
++	printk("do_ade(): sending SIGILL to %s (epc == %0*lx, ra == %0*lx)\n",
++	       current->comm,
++	       FIELD, (unsigned long) regs->cp0_epc,
++	       FIELD, (unsigned long) regs->regs[31]);
++	show_regs(regs);
++	show_code((unsigned int __user *)regs->cp0_epc);
+ 	force_sig(SIGILL, current);
+ }
+ 
+@@ -531,12 +551,19 @@ asmlinkage void do_ade(struct pt_regs *r
+ 
+ sigbus:
+ 	die_if_kernel("Kernel unaligned instruction access", regs);
++	printk("do_ade() #2: sending SIGBUS to %s (epc == %0*lx, ra == %0*lx)\n",
++	       current->comm,
++	       FIELD, (unsigned long) regs->cp0_epc,
++	       FIELD, (unsigned long) regs->regs[31]);
++	show_regs(regs);
++	show_code((unsigned int __user *)regs->cp0_epc);
+ 	force_sig(SIGBUS, current);
+ 
+ 	/*
+ 	 * XXX On return from the signal handler we should advance the epc
+ 	 */
+ }
++#undef FIELD
+ 
+ #ifdef CONFIG_DEBUG_FS
+ extern struct dentry *mips_debugfs_dir;

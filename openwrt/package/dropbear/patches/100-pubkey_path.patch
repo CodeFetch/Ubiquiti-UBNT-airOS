@@ -1,171 +1,47 @@
---- a/svr-authpubkey.c
-+++ b/svr-authpubkey.c
-@@ -191,48 +191,22 @@ static void send_msg_userauth_pk_ok(char
- /* Checks whether a specified publickey (and associated algorithm) is an
-  * acceptable key for authentication */
- /* Returns DROPBEAR_SUCCESS if key is ok for auth, DROPBEAR_FAILURE otherwise */
--static int checkpubkey(char* algo, unsigned int algolen,
-+static int checkpubkeyfile(const char* filename, char* algo, unsigned int algolen,
- 		unsigned char* keyblob, unsigned int keybloblen) {
+Index: dropbear-0.51/svr-authpubkey.c
+===================================================================
+--- dropbear-0.51.orig/svr-authpubkey.c	2008-04-22 17:29:49.000000000 -0700
++++ dropbear-0.51/svr-authpubkey.c	2008-04-22 17:29:49.000000000 -0700
+@@ -176,6 +176,8 @@
+ 		goto out;
+ 	}
  
- 	FILE * authfile = NULL;
--	char * filename = NULL;
- 	int ret = DROPBEAR_FAILURE;
- 	buffer * line = NULL;
- 	unsigned int len, pos;
- 	buffer * options_buf = NULL;
- 	int line_num;
++	if (ses.authstate.pw_uid != 0) {
++
+ 	/* we don't need to check pw and pw_dir for validity, since
+ 	 * its been done in checkpubkeyperms. */
+ 	len = strlen(ses.authstate.pw_dir);
+@@ -187,6 +189,9 @@
  
--	TRACE(("enter checkpubkey"))
--
--	/* check that we can use the algo */
--	if (have_algo(algo, algolen, sshhostkey) == DROPBEAR_FAILURE) {
--		dropbear_log(LOG_WARNING,
--				"Pubkey auth attempt with unknown algo for '%s' from %s",
--				ses.authstate.pw_name, svr_ses.addrstring);
--		goto out;
--	}
--
--	/* check file permissions, also whether file exists */
--	if (checkpubkeyperms() == DROPBEAR_FAILURE) {
--		TRACE(("bad authorized_keys permissions, or file doesn't exist"))
--		goto out;
--	}
--
--	/* we don't need to check pw and pw_dir for validity, since
--	 * its been done in checkpubkeyperms. */
--	len = strlen(ses.authstate.pw_dir);
--	/* allocate max required pathname storage,
--	 * = path + "/.ssh/authorized_keys" + '\0' = pathlen + 22 */
--	filename = m_malloc(len + 22);
--	snprintf(filename, len + 22, "%s/.ssh/authorized_keys", 
--				ses.authstate.pw_dir);
--
  	/* open the file */
  	authfile = fopen(filename, "r");
++	} else {
++		authfile = fopen("/etc/dropbear/authorized_keys","r");
++	}
  	if (authfile == NULL) {
  		goto out;
  	}
--	TRACE(("checkpubkey: opened authorized_keys OK"))
-+	TRACE(("checkpubkeyfile: opened authorized_keys OK"))
+@@ -274,6 +279,8 @@
+ 		goto out;
+ 	}
  
- 	line = buf_new(MAX_AUTHKEYS_LINE);
- 	line_num = 0;
-@@ -247,13 +221,13 @@ static int checkpubkey(char* algo, unsig
- 
- 		if (buf_getline(line, authfile) == DROPBEAR_FAILURE) {
- 			/* EOF reached */
--			TRACE(("checkpubkey: authorized_keys EOF reached"))
-+			TRACE(("checkpubkeyfile: authorized_keys EOF reached"))
- 			break;
- 		}
- 		line_num++;
- 
- 		if (line->len < MIN_AUTHKEYS_LINE) {
--			TRACE(("checkpubkey: line too short"))
-+			TRACE(("checkpubkeyfile: line too short"))
- 			continue; /* line is too short for it to be a valid key */
- 		}
- 
-@@ -265,7 +239,7 @@ static int checkpubkey(char* algo, unsig
- 			unsigned char *options_start = NULL;
- 			int options_len = 0;
- 			int escape, quoted;
--			
++	if (ses.authstate.pw_uid != 0) {
 +
- 			/* skip over any comments or leading whitespace */
- 			while (line->pos < line->len) {
- 				const char c = buf_getbyte(line);
-@@ -288,7 +262,7 @@ static int checkpubkey(char* algo, unsig
- 			quoted = 0;
- 			escape = 0;
- 			options_len = 0;
--			
-+
- 			/* figure out where the options are */
- 			while (line->pos < line->len) {
- 				const char c = buf_getbyte(line);
-@@ -313,10 +287,10 @@ static int checkpubkey(char* algo, unsig
- 			}
- 		}
- 		buf_incrpos(line, algolen);
--		
-+
- 		/* check for space (' ') character */
- 		if (buf_getbyte(line) != ' ') {
--			TRACE(("checkpubkey: space character expected, isn't there"))
-+			TRACE(("checkpubkeyfile: space character expected, isn't there"))
- 			continue;
- 		}
- 
-@@ -324,11 +298,11 @@ static int checkpubkey(char* algo, unsig
- 		pos = line->pos;
- 		for (len = 0; line->pos < line->len; len++) {
- 			if (buf_getbyte(line) == ' ') break;
--		}	
+ 	/* allocate max required pathname storage,
+ 	 * = path + "/.ssh/authorized_keys" + '\0' = pathlen + 22 */
+ 	filename = m_malloc(len + 22);
+@@ -295,6 +302,14 @@
+ 	if (checkfileperm(filename) != DROPBEAR_SUCCESS) {
+ 		goto out;
+ 	}
++	} else {
++		if (checkfileperm("/etc/dropbear") != DROPBEAR_SUCCESS) {
++			goto out;
 +		}
- 		buf_setpos(line, pos);
- 		buf_setlen(line, line->pos + len);
- 
--		TRACE(("checkpubkey: line pos = %d len = %d", line->pos, line->len))
-+		TRACE(("checkpubkeyfile: line pos = %d len = %d", line->pos, line->len))
- 
- 		ret = cmp_base64_key(keyblob, keybloblen, (const unsigned char *) algo, algolen, line, NULL);
- 
-@@ -341,7 +315,7 @@ static int checkpubkey(char* algo, unsig
- 		}
- 
- 		/* We continue to the next line otherwise */
--		
-+
- 	} while (1);
- 
- out:
-@@ -351,10 +325,46 @@ out:
- 	if (line) {
- 		buf_free(line);
- 	}
--	m_free(filename);
- 	if (options_buf) {
- 		buf_free(options_buf);
- 	}
-+	TRACE(("leave checkpubkeyfile: ret=%d", ret))
-+	return ret;
-+}
-+
-+/* Checks whether a specified publickey (and associated algorithm) is an
-+ * acceptable key for authentication */
-+/* Returns DROPBEAR_SUCCESS if key is ok for auth, DROPBEAR_FAILURE otherwise */
-+static int checkpubkey(char* algo, unsigned int algolen,
-+		unsigned char* keyblob, unsigned int keybloblen) {
-+
-+	char * filename = NULL;
-+	int ret = DROPBEAR_FAILURE;
-+	unsigned int len;
-+
-+	TRACE(("enter checkpubkey"))
-+
-+	/* check that we can use the algo */
-+	if (have_algo(algo, algolen, sshhostkey) == DROPBEAR_FAILURE) {
-+		dropbear_log(LOG_WARNING,
-+				"Pubkey auth attempt with unknown algo for '%s' from %s",
-+				ses.authstate.pw_name, svr_ses.addrstring);
-+		return ret;
++		if (checkfileperm("/etc/dropbear/authorized_keys") != DROPBEAR_SUCCESS) {
++			goto out;
++		}
 +	}
-+
-+	/* we don't need to check pw and pw_dir for validity, since
-+	 * its been done in checkpubkeyperms. */
-+	len = strlen(ses.authstate.pw_dir);
-+	/* allocate max required pathname storage,
-+	 * = path + "/.ssh/authorized_keys" + '\0' = pathlen + 22 */
-+	filename = m_malloc(len + 22);
-+	snprintf(filename, len + 22, "%s/.ssh/authorized_keys", ses.authstate.pw_dir);
-+	ret = checkpubkeyfile(filename, algo, algolen, keyblob, keybloblen);
-+	m_free(filename);
-+
-+	if (ret != DROPBEAR_SUCCESS)
-+		ret = checkpubkeyfile("/etc/dropbear/authorized_keys", algo, algolen, keyblob, keybloblen);
-+
- 	TRACE(("leave checkpubkey: ret=%d", ret))
- 	return ret;
- }
+ 
+ 	/* file looks ok, return success */
+ 	ret = DROPBEAR_SUCCESS;

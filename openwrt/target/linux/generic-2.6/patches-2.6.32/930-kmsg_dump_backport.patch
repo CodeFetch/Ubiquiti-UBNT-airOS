@@ -1,5 +1,7 @@
+Index: linux-2.6.32.71/include/linux/kmsg_dump.h
+===================================================================
 --- /dev/null
-+++ b/include/linux/kmsg_dump.h
++++ linux-2.6.32.71/include/linux/kmsg_dump.h
 @@ -0,0 +1,44 @@
 +/*
 + * linux/include/kmsg_dump.h
@@ -45,8 +47,10 @@
 +int kmsg_dump_unregister(struct kmsg_dumper *dumper);
 +
 +#endif /* _LINUX_KMSG_DUMP_H */
---- a/kernel/panic.c
-+++ b/kernel/panic.c
+Index: linux-2.6.32.71/kernel/panic.c
+===================================================================
+--- linux-2.6.32.71.orig/kernel/panic.c
++++ linux-2.6.32.71/kernel/panic.c
 @@ -10,6 +10,7 @@
   */
  #include <linux/debug_locks.h>
@@ -55,24 +59,36 @@
  #include <linux/kallsyms.h>
  #include <linux/notifier.h>
  #include <linux/module.h>
-@@ -74,6 +75,7 @@ NORET_TYPE void panic(const char * fmt,
- 	dump_stack();
- #endif
+@@ -22,6 +23,7 @@
+ #include <linux/init.h>
+ #include <linux/nmi.h>
+ #include <linux/dmi.h>
++#include <linux/mm.h>
  
+ int panic_on_oops;
+ static unsigned long tainted_mask;
+@@ -72,6 +74,8 @@ NORET_TYPE void panic(const char * fmt,
+ 	printk(KERN_EMERG "Kernel panic - not syncing: %s\n",buf);
+ 	dump_stack();
+ 
++	show_free_areas();
 +	kmsg_dump(KMSG_DUMP_PANIC);
  	/*
  	 * If we have crashed and we have a crash kernel loaded let it handle
  	 * everything else.
-@@ -339,6 +341,7 @@ void oops_exit(void)
+@@ -337,6 +341,8 @@ void oops_exit(void)
  {
  	do_oops_enter_exit();
  	print_oops_end_marker();
++	show_free_areas();
 +	kmsg_dump(KMSG_DUMP_OOPS);
  }
  
  #ifdef WANT_WARN_ON_SLOWPATH
---- a/kernel/printk.c
-+++ b/kernel/printk.c
+Index: linux-2.6.32.71/kernel/printk.c
+===================================================================
+--- linux-2.6.32.71.orig/kernel/printk.c
++++ linux-2.6.32.71/kernel/printk.c
 @@ -33,6 +33,7 @@
  #include <linux/bootmem.h>
  #include <linux/syscalls.h>

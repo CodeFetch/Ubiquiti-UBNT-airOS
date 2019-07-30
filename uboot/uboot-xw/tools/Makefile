@@ -20,10 +20,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston,
 # MA 02111-1307 USA
 #
+include $(TOPDIR)/config.mk
 
 BINS	= img2srec$(SFX) mkimage$(SFX) envcrc$(SFX) gen_eth_addr$(SFX) bmp_logo$(SFX)
 
+ifeq ($(USE_RSA),1)
+BINS += keygen$(SFX)
+endif
+
 OBJS	= environment.o img2srec.o mkimage.o crc32.o envcrc.o gen_eth_addr.o bmp_logo.o
+
+ifeq ($(USE_RSA),1)
+BINS += keygen.o
+endif
 
 ifeq ($(ARCH),mips)
 BINS   += inca-swap-bytes$(SFX)
@@ -111,8 +120,14 @@ include $(TOPDIR)/config.mk
 #
 CPPFLAGS   = -idirafter ../include -DTEXT_BASE=$(TEXT_BASE) -DUSE_HOSTCC
 CFLAGS     = $(HOST_CFLAGS) $(CPPFLAGS) -O
+ifeq ($(USE_RSA),1)
+SSLFLAGS   =  -I/usr/include /lib/x86_64-linux-gnu/libssl.so.1.0.0 -lc /lib/x86_64-linux-gnu/libcrypto.so.1.0.0 -ldl
+endif
 AFLAGS	   = -D__ASSEMBLY__ $(CPPFLAGS)
 CC	   = $(HOSTCC)
+ifeq ($(USE_RSA),1)
+KEYGEN     = ./keygen
+endif
 STRIP	   = $(HOSTSTRIP)
 MAKEDEPEND = makedepend
 
@@ -132,6 +147,16 @@ mkimage$(SFX):	mkimage.o crc32.o
 ncb$(SFX):	ncb.o
 		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^
 		$(STRIP) $@
+
+ifeq ($(USE_RSA),1)
+keygen$(SFX):	keygen.o
+		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^ -lssl -lc -lcrypto -ldl
+		$(STRIP) $@
+		rm -f pub.key
+		openssl rsa -in ../$(SHARE_KEY_DIR)/$(RSA_KEYFILE) -pubout -out pub.key
+		rm -f ../ubnt/common/key-file.c
+		$(KEYGEN) ./pub.key ../ubnt/common/key-file.c
+endif
 
 gen_eth_addr$(SFX):	gen_eth_addr.o
 		$(CC) $(CFLAGS) $(HOST_LDFLAGS) -o $@ $^
@@ -160,6 +185,11 @@ mkimage.o:	mkimage.c
 
 ncb.o:		ncb.c
 		$(CC) -g $(CFLAGS) -c $<
+
+ifeq ($(USE_RSA),1)
+keygen.o:	keygen.c
+		$(CC) -g $(CFLAGS) -c $<
+endif
 
 gen_eth_addr.o:	gen_eth_addr.c
 		$(CC) -g $(CFLAGS) -c $<

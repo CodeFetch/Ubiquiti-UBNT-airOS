@@ -1,0 +1,21 @@
+--- a/src/option.c
++++ b/src/option.c
+@@ -1312,16 +1312,16 @@ static int one_opt(int option, char *arg
+ 	       usage[i].rept = ARG_USED_FILE;
+ 	   }
+ 
+ 	 if (rept != ARG_DUP && rept != ARG_ONE && rept != ARG_USED_CL) 
+ 	   {
+ 	     if ((rept & EXT_OPT) && (rept & ~EXT_OPT))
+ 		 daemon->ext_options |= (rept & ~EXT_OPT);
+-             else
+-		 daemon->options |= rept;
++		 else
++			 set_option_bool(rept);
+ 	     return 1;
+ 	   }
+        
+ 	 break;
+       }
+   
+   switch (option)

@@ -53,10 +53,19 @@ ifndef COMPRESSED_UBOOT
 COMPRESSED_UBOOT = 0
 endif 
 
+ifeq ($(USE_RSA),1)
+RSA_IMG_SIGNED = 1
+endif
+
 ifeq (include/config.mk,$(wildcard include/config.mk))
 # load ARCH, BOARD, and CPU configuration
 include include/config.mk
 export	ARCH CPU BOARD VENDOR SOC
+
+ifeq ($(USE_RSA),1)
+export	RSA_IMG_SIGNED RSA_KEYFILE
+endif
+
 ifndef CROSS_COMPILE
 ifeq ($(HOSTARCH),ppc)
 CROSS_COMPILE =
@@ -1987,6 +1996,13 @@ ubntxm_config: unconfig
 ifeq ($(UBNT_APP),1)
 	@echo "#define UBNT_APP 1" >>include/config.h
 endif
+ifeq ($(USE_RSA),1)
+	@echo '#define USE_RSA 1' >>include/config.h
+endif
+ifeq ($(USE_RSA),1)
+	@echo '#define USE_RSA 1' >>include/config.h
+endif
+
 	
 	@./mkconfig -a ubnt-xm mips mips ubnt-xm ar7240 ar7240
 	
@@ -2105,7 +2121,7 @@ clean:
 	      examples/smc91111_eeprom \
 	      examples/test_burst
 	rm -f tools/img2srec tools/mkimage tools/envcrc tools/gen_eth_addr
-	rm -f tools/mpc86x_clk tools/ncb
+	rm -f tools/mpc86x_clk tools/ncb tools/keygen tools/pub.key ubnt/common/key-file.c
 	rm -f tools/easylogo/easylogo tools/bmp_logo
 	rm -f tools/gdb/astest tools/gdb/gdbcont tools/gdb/gdbsend
 	rm -f tools/env/fw_printenv tools/env/fw_setenv

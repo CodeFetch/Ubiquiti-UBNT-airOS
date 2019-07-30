@@ -9,16 +9,17 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ebtables
-PKG_VERSION:=2.0.8-2
-PKG_RELEASE:=2
+PKG_VERSION:=2.0.10-4
+PKG_RELEASE:=1
 
 PKG_SOURCE:=$(PKG_NAME)-v$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=@SF/ebtables
-PKG_MD5SUM:=66bcbcb2dcf3b981ad4e86e1720e796e
+PKG_MD5SUM:=506742a3d44b9925955425a659c1a8d0
 
 PKG_BUILD_DIR:=$(BUILD_DIR)/ebtables-v$(PKG_VERSION)
 
 include $(INCLUDE_DIR)/package.mk
+include $(INCLUDE_DIR)/kernel.mk
 
 define Package/ebtables
   SECTION:=net
@@ -44,10 +45,14 @@ define Package/ebtables-utils/description
 	$(call Package/ebtables/description)
 endef
 
+ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.28)),1)
+	USE_XTABLES:=-DUSE_XTABLES
+endif
+
 MAKE_VARS += EXT_LIBSI="$(LIBGCC_S)"
 
 MAKE_FLAGS += \
-	CFLAGS="$(TARGET_CFLAGS)" \
+	CFLAGS="$(TARGET_CFLAGS) $(USE_XTABLES)" \
 	LIBDIR="/usr/lib/ebtables"
 
 define Package/ebtables/install

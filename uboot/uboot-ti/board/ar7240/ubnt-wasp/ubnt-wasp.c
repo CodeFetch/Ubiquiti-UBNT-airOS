@@ -179,6 +179,14 @@ int call_boot_progress_app(int status) {
 
 #endif /* #ifdef UBNT_APP */
 
+int getenv_int(const char* var) {
+	const char* val = getenv(var);
+	printf("getenv %s=%s",var,val);
+	if (!val)
+		return 0;
+	return simple_strtol(val, NULL, 10);
+}
+
 void show_boot_progress(int arg) {
 }
 
@@ -191,11 +199,14 @@ void ar7240_hw_reset() {
 }
 
 void ubnt_cer(void) {
+	if (getenv_int("nogps") == 0) {
 #ifdef DEBUG
-	printf("%s deasserting external reset\n", __func__, status);
+	        printf("%s deasserting external reset\n", __func__, status);
 #endif
-	ar7240_reg_rmw_clear(AR7240_RESET, AR7240_RESET_EXTERNAL);
-	udelay(100);
+		ar7240_reg_rmw_clear(AR7240_RESET, AR7240_RESET_EXTERNAL);
+		udelay(100);
+	}
 
 }
+
 

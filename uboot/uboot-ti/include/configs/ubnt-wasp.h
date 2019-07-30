@@ -209,8 +209,7 @@
 //#	define ATH_K_CMD	gen_cmd(lk, ATH_K_ADDR, ATH_K_FILE)
 #endif
 
-//#define CONFIG_EXTRA_ENV_SETTINGS	\
-	"dir=\0" ATH_U_CMD ATH_F_CMD ATH_K_CMD ""
+//#define CONFIG_EXTRA_ENV_SETTINGS	"dir=\0" ATH_U_CMD ATH_F_CMD ATH_K_CMD ""
 
 
 /* Application code locations

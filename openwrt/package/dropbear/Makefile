@@ -9,14 +9,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dropbear
-PKG_VERSION:=2016.74
-PKG_RELEASE:=1
+PKG_VERSION:=0.51
+PKG_RELEASE:=2
 
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
+PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:= \
 	http://www.mirrors.wiretapped.net/security/cryptography/apps/ssh/dropbear/ \
 	http://matt.ucc.asn.au/dropbear/releases/
-PKG_MD5SUM:=9ad0172731e0f16623937804643b5bd8
+PKG_MD5SUM:=1045df60c2bdbd39c707238305a1e9e5
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -35,9 +35,12 @@ define Package/dropbear/description
  A small SSH2 server/client designed for small memory environments.
 endef
 
-CFLAGS += -DDSS_PRIV_FILENAME=\"/etc/persistent/dropbear_dss_host_key\" \
-	      -DRSA_PRIV_FILENAME=\"/etc/persistent/dropbear_rsa_host_key\" \
-	      -DAUTHORIZED_KEYS=\"/etc/dropbear/authorized_keys\"
+define Package/dropbearconvert
+  $(call Package/dropbear/Default)
+  SECTION:=utils
+  CATEGORY:=Utilities
+  TITLE:=Utility for converting SSH keys
+endef
 
 CONFIGURE_ARGS += \
 	--with-shared \
@@ -65,8 +68,12 @@ define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		$(TARGET_CONFIGURE_OPTS) \
 		LD="$(TARGET_CC)" \
-		PROGRAMS="dropbear dbclient dropbearkey scp dropbearconvert" \
+		PROGRAMS="dropbear dbclient dropbearkey scp" \
 		MULTI=1 SCPPROGRESS=1
+	$(MAKE) -C $(PKG_BUILD_DIR) \
+		$(TARGET_CONFIGURE_OPTS) \
+		LD="$(TARGET_CC)" \
+		PROGRAMS="dropbearconvert"
 endef
 
 define Package/dropbear/install
@@ -77,7 +84,6 @@ define Package/dropbear/install
 	ln -sf ../sbin/dropbear $(1)/usr/bin/ssh
 	ln -sf ../sbin/dropbear $(1)/usr/bin/dbclient
 	ln -sf ../sbin/dropbear $(1)/usr/bin/dropbearkey
-	ln -sf ../sbin/dropbear $(1)/usr/bin/dropbearconvert
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DATA) ./files/dropbear.config $(1)/etc/config/dropbear
 	$(INSTALL_DIR) $(1)/etc/init.d
@@ -87,4 +93,10 @@ define Package/dropbear/install
 	echo /etc/dropbear/dropbear_dss_host_key >> $(1)/usr/lib/opkg/info/dropbear.conffiles
 endef
 
+define Package/dropbearconvert/install
+	$(INSTALL_DIR) $(1)/usr/bin
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/dropbearconvert $(1)/usr/bin/dropbearconvert
+endef
+
 $(eval $(call BuildPackage,dropbear))
+$(eval $(call BuildPackage,dropbearconvert))

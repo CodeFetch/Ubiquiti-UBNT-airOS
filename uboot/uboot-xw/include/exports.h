@@ -32,7 +32,6 @@ int i2c_write (uchar, uint, int , uchar* , int);
 int i2c_read (uchar, uint, int , uchar* , int);
 #endif	/* CFG_CMD_I2C */
 #ifdef UBNT_APP
-int find_mtd_part(const char *, struct mtd_device **, unsigned char *, struct part_info **);
 char *getenv (char *);
 void setenv (char *, char *);
 #endif

@@ -1,19 +1,23 @@
---- a/cli-runopts.c
-+++ b/cli-runopts.c
-@@ -292,14 +292,16 @@ void cli_getopts(int argc, char ** argv)
- 					break;
- #endif
- #ifdef DEBUG_TRACE
- 				case 'v':
+Index: dropbear-0.51/cli-runopts.c
+===================================================================
+--- dropbear-0.51.orig/cli-runopts.c	2008-04-22 17:29:49.000000000 -0700
++++ dropbear-0.51/cli-runopts.c	2008-04-22 17:29:50.000000000 -0700
+@@ -220,6 +220,10 @@
  					debug_trace = 1;
  					break;
  #endif
++				case 'o':
++					next = &dummy;
 +				case 'x':
 +					break;
  				case 'F':
  				case 'e':
- #ifndef ENABLE_USER_ALGO_LIST
  				case 'c':
- 				case 'm':
+@@ -231,7 +235,6 @@
+ #ifndef ENABLE_CLI_LOCALTCPFWD
+ 				case 'L':
  #endif
- 				case 'D':
+-				case 'o':
+ 				case 'b':
+ 					next = &dummy;
+ 				default:

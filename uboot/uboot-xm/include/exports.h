@@ -5,6 +5,9 @@
 
 #ifndef UBNT_APP
 #include <common.h>
+#include <load_kernel.h>
+#else
+#include <stddef.h>
 #endif
 
 /* These are declarations of exported functions available in C code */
@@ -31,8 +34,6 @@ int i2c_write (uchar, uint, int , uchar* , int);
 int i2c_read (uchar, uint, int , uchar* , int);
 #endif	/* CFG_CMD_I2C */
 #ifdef UBNT_APP
-struct mtd_device {};
-struct part_info {};
 int find_mtd_part(const char *, struct mtd_device **, unsigned char *, struct part_info **);
 char *getenv (char *);
 void setenv (char *, char *);

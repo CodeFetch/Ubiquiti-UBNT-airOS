@@ -543,7 +543,7 @@ TftpTimeout (void)
 }
 
 #ifdef	UBNT_USE_WATCHDOG
-extern void ubnt_wd_disable();
+extern void ubnt_wd_disable(void);
 #endif
 
 void

@@ -1,6 +1,6 @@
 --- a/sysklogd/syslogd.c
 +++ b/sysklogd/syslogd.c
-@@ -62,52 +62,84 @@
+@@ -62,14 +62,15 @@
  #define _PATH_LOG	"/dev/log"
  #endif
  
@@ -16,16 +16,7 @@
  #include <sys/ipc.h>
  #include <sys/sem.h>
  #include <sys/shm.h>
- #endif
- 
- 
- #define DEBUG 0
-+#define KEEPALIVE 1
- 
- /* MARK code is not very useful, is bloat, and broken:
-  * can deadlock if alarmed to make MARK while writing to IPC buffer
-  * (semaphores are down but do_mark routine tries to down them again) */
- #undef SYSLOGD_MARK
+@@ -85,29 +86,62 @@
  
  /* Write locking does not seem to be useful either */
  #undef SYSLOGD_WRLOCK
@@ -33,10 +24,20 @@
  enum {
  	MAX_READ = CONFIG_FEATURE_SYSLOGD_READ_BUFFER_SIZE,
  	DNS_WAIT_SEC = 2 * 60,
++#if ENABLE_FEATURE_REMOTE_LOG
 +	MIN_REM_CONN_WAIT_SEC = 14,
 +	SELECT_TIMEOUT_SEC = 5,
++#endif
  };
  
+ /* Semaphore operation structures */
+ struct shbuf_ds {
+ 	int32_t size;   /* size of data - 1 */
+ 	int32_t tail;   /* end of message list */
+ 	char data[1];   /* data/messages */
+ };
+ 
+ #if ENABLE_FEATURE_REMOTE_LOG
 +typedef enum {
 +	DISCONNECTED = 1,
 +	CONNECTING,
@@ -45,13 +46,7 @@
 +	GET_STATE = 99,
 +} connection_states;
 +
- /* Semaphore operation structures */
- struct shbuf_ds {
- 	int32_t size;   /* size of data - 1 */
- 	int32_t tail;   /* end of message list */
- 	char data[1];   /* data/messages */
- };
- 
++#define KEEPALIVE 1
 +#define CB_ITEM_COUNT 50
 +
 +struct cbuffer {
@@ -68,7 +63,6 @@
 +};
 +typedef struct message message_t;
 +
- #if ENABLE_FEATURE_REMOTE_LOG
  typedef struct {
  	int remoteFD;
 +	int tcp;                           \
@@ -85,7 +79,7 @@
  	const char *path;
  	int fd;
  	time_t last_log_time;
-@@ -147,14 +179,17 @@ IF_FEATURE_IPC_SYSLOG( \
+@@ -147,14 +181,17 @@ IF_FEATURE_IPC_SYSLOG( \
  ) \
  IF_FEATURE_SYSLOGD_CFG( \
  	logRule_t *log_rules; \
@@ -103,7 +97,7 @@
  };
  
  struct globals {
-@@ -189,14 +224,17 @@ static const struct init_globals init_da
+@@ -189,14 +226,17 @@ static const struct init_globals init_da
  	.markInterval = 20 * 60,
  #endif
  	.logLevel = 8,
@@ -121,7 +115,7 @@
  	.SMwup = { {1, -1, IPC_NOWAIT} },
  	.SMwdn = { {0, 0}, {1, 0}, {1, +1} },
  #endif
-@@ -215,53 +253,63 @@ enum {
+@@ -215,53 +255,63 @@ enum {
  	OPTBIT_outfile, // -O
  	OPTBIT_loglevel, // -l
  	OPTBIT_small, // -S
@@ -185,7 +179,7 @@
  {
  	for (; c_set->c_name; c_set++) {
  		if (strcmp(name, c_set->c_name) == 0)
-@@ -444,14 +492,96 @@ static void parse_syslogdcfg(const char
+@@ -444,14 +494,96 @@ static void parse_syslogdcfg(const char
  #error Sorry, you must set the syslogd buffer size to at least 4KB.
  #error Please check CONFIG_FEATURE_IPC_SYSLOG_BUFFER_SIZE
  #endif
@@ -282,7 +276,7 @@
  	}
  	if (G.shmid != -1) {
  		shmctl(G.shmid, IPC_RMID, NULL);
-@@ -767,20 +897,26 @@ static void timestamp_and_log(int pri, c
+@@ -767,20 +899,26 @@ static void timestamp_and_log(int pri, c
  			return;
  		}
  #endif
@@ -311,7 +305,7 @@
   * escape control chars and log each locally. */
  static void split_escape_and_log(char *tmpbuf, int len)
  {
-@@ -851,43 +987,240 @@ static NOINLINE int create_socket(void)
+@@ -851,42 +989,239 @@ static NOINLINE int create_socket(void)
  		safe_strncpy(sunx.sun_path, dev_log_name, sizeof(sunx.sun_path));
  		free(dev_log_name);
  	}
@@ -505,8 +499,6 @@
 +	return len;
 +}
 +
-+#endif // ENABLE_FEATURE_REMOTE_LOG
-+
 +static int getsockopt_err(int sock_fd)
 +{
 +	int valopt;
@@ -532,30 +524,32 @@
 +			printf("%d ", i);
 +	printf("]");
 +}
-+
++#endif // ENABLE_FEATURE_REMOTE_LOG
  
  static void do_syslogd(void) NORETURN;
  static void do_syslogd(void)
  {
- #if ENABLE_FEATURE_REMOTE_LOG
- 	llist_t *item;
- #endif
++	fd_set readfds;
 +	int sock_fd = -1;
 +	int nfds = 0;
 +	int rv;
-+	fd_set writefds;
-+	fd_set readfds;
 +	struct timeval tv;
 +	ssize_t sz = 0;
+ #if ENABLE_FEATURE_REMOTE_LOG
+-	llist_t *item;
++	/* For now we just stay with a single remote host */
++	/*	llist_t *item; */
++	remoteHost_t *rh = NULL;
++	fd_set writefds;
 +	int remote_log = (ENABLE_FEATURE_REMOTE_LOG && (option_mask32 & OPT_remotelog) && G.remoteHosts);
+ #endif
  #if ENABLE_FEATURE_SYSLOGD_DUP
  	int last_sz = -1;
  	char *last_buf;
  	char *recvbuf = G.recvbuf;
  #else
  #define recvbuf (G.recvbuf)
- #endif
-@@ -897,103 +1230,214 @@ static void do_syslogd(void)
+@@ -897,103 +1232,219 @@ static void do_syslogd(void)
  	signal_no_SA_RESTART_empty_mask(SIGINT, record_signo);
  	//signal_no_SA_RESTART_empty_mask(SIGQUIT, record_signo);
  	signal(SIGHUP, SIG_IGN);
@@ -573,7 +567,12 @@
  		kmsg_init();
  
  	timestamp_and_log_internal("syslogd started: BusyBox v" BB_VER);
++#if ENABLE_FEATURE_REMOTE_LOG
 +	if (DEBUG) printf("remote_log:%d\n", remote_log);
++	/* For now we just stay with a single remote host */
++	if (G.remoteHosts)
++		rh = (remoteHost_t*)G.remoteHosts->data;
++#endif
  
  	while (!bb_got_signal) {
 -		ssize_t sz;
@@ -631,8 +630,7 @@
 +#if ENABLE_FEATURE_REMOTE_LOG
 +//		for (item = G.remoteHosts; item != NULL; item = item->link) {
 +		/* For now we just stay with a single remote host */
-+		if (G.remoteHosts) {
-+			remoteHost_t *rh = (remoteHost_t*)G.remoteHosts->data;
++		if (rh) {
  
 -			if (rh->remoteFD == -1) {
 +			if (conn_state(rh, GET_STATE) == DISCONNECTED) {
@@ -715,7 +713,7 @@
 +				get_fd(nfds, readfds);
 +				printf(" conn_state:%d\n", conn_state(rh, GET_STATE));
 +			}
-+		} /* G.remoteHosts */
++		} /* rh */
 +#endif	// ENABLE_FEATURE_REMOTE_LOG
 +
 +		/* Local log write routine */
@@ -726,7 +724,11 @@
  		}
 +
 +		/* Select blocks there */
-+		rv = select(nfds, &readfds, remote_log ? &writefds : NULL, NULL, &tv);
++		rv = select(nfds, &readfds,
++#if ENABLE_FEATURE_REMOTE_LOG
++			remote_log ? &writefds :
++#endif
++			NULL, NULL, &tv);
 +
 +
 +		if (rv < 0 && errno != EINTR) {
@@ -772,9 +774,8 @@
 +#if ENABLE_FEATURE_REMOTE_LOG
 +					/* Some day should enable remote hosts loop,
 +					 * but for now we just stay with a single remote host */
-+					if (G.remoteHosts && sz)
++					if (sz && rh)
 +					{
-+						remoteHost_t *rh = (remoteHost_t*)G.remoteHosts->data;
 +						cb_write(&rh->cbuffer, recvbuf, sz);
 +					}
 +#endif //ENABLE_FEATURE_REMOTE_LOG
@@ -785,10 +786,8 @@
 +#if ENABLE_FEATURE_REMOTE_LOG
 +			/* Some day should enable remote hosts loop,
 +			 * but for now we just stay with a single remote host */
-+			if (G.remoteHosts)
++			if (rh && rh->remoteFD >= 0)
 +			{
-+				remoteHost_t *rh = (remoteHost_t*)G.remoteHosts->data;
-+
 +				/* Remote host write descriptor routine for connection monitoring */
 +				if (FD_ISSET(rh->remoteFD, &writefds)) {
 +					if (DEBUG) printf("fd is part of writefds set\n");
@@ -821,7 +820,7 @@
 +					}
 +				}
 +
-+			} /* G.RemoteHosts */
++			} /* rh */
 +#endif //ENABLE_FEATURE_REMOTE_LOG
 +		} /* select handling */
 +
@@ -832,7 +831,7 @@
  	ipcsyslog_cleanup();
  	if (option_mask32 & OPT_kmsg)
  		kmsg_cleanup();
-@@ -1017,14 +1461,15 @@ int syslogd_main(int argc UNUSED_PARAM,
+@@ -1017,14 +1468,15 @@ int syslogd_main(int argc UNUSED_PARAM,
  	opts = getopt32(argv, OPTION_STR, OPTION_PARAM);
  #if ENABLE_FEATURE_REMOTE_LOG
  	while (remoteAddrList) {
@@ -848,7 +847,7 @@
  #ifdef SYSLOGD_MARK
  	if (opts & OPT_mark) // -m
  		G.markInterval = xatou_range(opt_m, 0, INT_MAX/60) * 60;
-@@ -1035,14 +1480,16 @@ int syslogd_main(int argc UNUSED_PARAM,
+@@ -1035,14 +1487,16 @@ int syslogd_main(int argc UNUSED_PARAM,
  		G.logLevel = xatou_range(opt_l, 1, 8);
  	//if (opts & OPT_small) // -S
  #if ENABLE_FEATURE_ROTATE_LOGFILE

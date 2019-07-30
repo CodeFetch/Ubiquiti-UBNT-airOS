@@ -11,6 +11,13 @@ PROFILE_LC:=$(shell tr '[:upper:]' '[:lower:]' <<< $(PROFILE))
 IMGNAME:=$(BIN_DIR)/$(PROFILE_LC)
 ROOTFS_CS_DIR:=/rootfs_cs
 CONFIG_UBNT_FIRMWARE_VERSION:=$(shell cat $(TARGET_DIR)/usr/lib/version | awk -F "." '{ORS=""}{for (i=1;i<NF-3;i++)print $$i"."}{print $$(NF-3)}')
+ifeq ($(CONFIG_RSA_auth),y)
+RSA_NAME:=$(PROFILE)
+ifneq ($(CONFIG_RSA_key_name),"")
+	RSA_NAME:=$(CONFIG_RSA_key_name)
+endif
+	SIGN_PARAMS:= -s $(STAGING_DIR_HOST)/ubnt-key/sign_$(RSA_NAME).rsa -p
+endif
 
 define imgname
 $(IMGNAME)-$(2)-$(patsubst jffs2-%,jffs2,$(1))
@@ -80,7 +87,7 @@ define Image/Build/custom_scripts
 	[ -e $(BIN_DIR)/$(PROFILE_LC)-cs-fw-layout.txt ] && \
 	sed -i -e 's,$$$$(PROFILE_LC),$(PROFILE_LC),g' $(BIN_DIR)/$(PROFILE_LC)-cs-fw-layout.txt && \
 	sed -i -e 's,$(PROFILE_LC)-root.squashfs,$(PROFILE_LC)-cs-root.squashfs,g' $(BIN_DIR)/$(PROFILE_LC)-cs-fw-layout.txt
-	cd $(BIN_DIR) && ubnt-mkfwimage -v `cat $(1)/usr/lib/version` -o `sed -e 's/\([^\.]*\)\.[^\.]*\.\(.*\)/\1.\2/' $(1)/usr/lib/version`.bin -i $(BIN_DIR)/$(PROFILE_LC)-cs-fw-layout.txt
+	cd $(BIN_DIR) && ubnt-mkfwimage -v `cat $(1)/usr/lib/version` -o `sed -e 's/\([^\.]*\)\.[^\.]*\.\(.*\)/\1.\2/' $(1)/usr/lib/version`.bin -i $(BIN_DIR)/$(PROFILE_LC)-cs-fw-layout.txt $(SIGN_PARAMS)
 	rm -rf $(1)
 endef
 
@@ -100,7 +107,7 @@ endif
 	[ -e ./files/$(PROFILE_LC)-ubootreflash ] && cp ./files/$(PROFILE_LC)-ubootreflash $(BIN_DIR)
 	sed -i -e 's,$$$$(PROFILE_LC),$(PROFILE_LC),g' $(BIN_DIR)/$(PROFILE_LC)-fw-layout.txt 
 	[ -e ./files/$(PROFILE_LC)-u-boot.rom ] && cp ./files/$(PROFILE_LC)-u-boot.rom $(BIN_DIR) || echo "$(PROFILE_LC)-u-boot.rom not found. IGNORING..."
-	cd $(BIN_DIR) && ubnt-mkfwimage -v `cat $(TARGET_DIR)/usr/lib/version` -o `sed -e 's/\([^\.]*\)\.[^\.]*\.\(.*\)/\1.\2/' $(TARGET_DIR)/usr/lib/version`.bin -i $(BIN_DIR)/$(PROFILE_LC)-fw-layout.txt \
+	cd $(BIN_DIR) && ubnt-mkfwimage -v `cat $(TARGET_DIR)/usr/lib/version` -o `sed -e 's/\([^\.]*\)\.[^\.]*\.\(.*\)/\1.\2/' $(TARGET_DIR)/usr/lib/version`.bin -i $(BIN_DIR)/$(PROFILE_LC)-fw-layout.txt $(SIGN_PARAMS)\
 	&& ln -sf `sed -e 's/\([^\.]*\)\.[^\.]*\.\(.*\)/\1.\2/' $(TARGET_DIR)/usr/lib/version`.bin latest.bin
 endef
 
