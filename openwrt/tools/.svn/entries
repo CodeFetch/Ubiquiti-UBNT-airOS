@@ -1,0 +1,119 @@
+10
+
+dir
+19086
+svn+ssh://openwrt@svn.openwrt.org/openwrt/tags/8.09.2/tools
+svn+ssh://openwrt@svn.openwrt.org/openwrt
+
+
+
+2009-12-29T13:42:41.329489Z
+18961
+agb
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3c298f89-4303-0410-b956-a3cf2f4a3e73
+
+lua
+dir
+
+mtd-utils
+dir
+
+include
+dir
+
+sstrip
+dir
+
+pkg-config
+dir
+
+ipkg-utils
+dir
+
+squashfs
+dir
+
+quilt
+dir
+
+lzma
+dir
+
+genext2fs
+dir
+
+automake
+dir
+
+ccache
+dir
+
+patch-cmdline
+dir
+
+firmware-utils
+dir
+
+mkimage
+dir
+
+dtc
+dir
+
+bison
+dir
+
+sed
+dir
+
+Makefile
+file
+
+
+
+
+2009-12-29T13:24:48.000000Z
+bdf817012395bc9791df384f4e9449aa
+2009-12-29T13:42:41.329489Z
+18961
+agb
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1897
+
+autoconf
+dir
+

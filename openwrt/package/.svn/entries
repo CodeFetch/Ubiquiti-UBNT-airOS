@@ -1,0 +1,305 @@
+10
+
+dir
+19086
+svn+ssh://openwrt@svn.openwrt.org/openwrt/tags/8.09.2/package
+svn+ssh://openwrt@svn.openwrt.org/openwrt
+
+
+
+2009-12-29T13:42:41.329489Z
+18961
+agb
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+3c298f89-4303-0410-b956-a3cf2f4a3e73
+
+swconfig
+dir
+
+iw
+dir
+
+i2c-gpio-custom
+dir
+
+ebtables
+dir
+
+ncurses
+dir
+
+gdbserver
+dir
+
+nvram
+dir
+
+ipset
+dir
+
+mtd
+dir
+
+qos-scripts
+dir
+
+broadcom-diag
+dir
+
+wireless-tools
+dir
+
+w1-gpio-custom
+dir
+
+broadcom-57xx
+dir
+
+nvram-brcm47xx
+dir
+
+zlib
+dir
+
+gpioctl
+dir
+
+fuse
+dir
+
+hostapd
+dir
+
+iptables
+dir
+
+hotplug2
+dir
+
+ixp4xx-microcode
+dir
+
+ar7-atm
+dir
+
+ubsec_ssb
+dir
+
+base-files
+dir
+
+e2fsprogs
+dir
+
+fconfig
+dir
+
+Makefile
+file
+
+
+
+
+2009-12-29T13:42:58.000000Z
+18fd49652dc75cab95d610195be5910a
+2009-12-29T13:42:41.329489Z
+18961
+agb
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2034
+
+openssl
+dir
+
+br2684ctl
+dir
+
+wprobe
+dir
+
+ocf-crypto-headers
+dir
+
+pcmcia-cs
+dir
+
+opkg
+dir
+
+libnl
+dir
+
+broadcom-mmc
+dir
+
+switch
+dir
+
+udev
+dir
+
+libtool
+dir
+
+uboot-ifxmips
+dir
+
+dnsmasq
+dir
+
+siit
+dir
+
+libreadline
+dir
+
+linux-atm
+dir
+
+kernel
+dir
+
+wrt55agv2-spidevs
+dir
+
+libnl-tiny
+dir
+
+pptp
+dir
+
+b43
+dir
+
+button-hotplug
+dir
+
+hostap-utils
+dir
+
+mac80211
+dir
+
+dropbear
+dir
+
+ppp
+dir
+
+rt2570
+dir
+
+acx-mac80211
+dir
+
+broadcom-wl
+dir
+
+comgt
+dir
+
+iproute2
+dir
+
+libpcap
+dir
+
+acx
+dir
+
+util-linux-ng
+dir
+
+arptables
+dir
+
+uci
+dir
+
+madwifi
+dir
+
+lua
+dir
+
+robocfg
+dir
+
+mmc_over_gpio
+dir
+
+hostap-driver
+dir
+
+wpa_supplicant
+dir
+
+bridge-utils
+dir
+
+busybox
+dir
+
+yamonenv
+dir
+
+gdb
+dir
+
+kexec-tools
+dir
+
+grub
+dir
+
+admswconfig
+dir
+
+firewall
+dir
+
+spi-ks8995
+dir
+
+libipfix
+dir
+
+nozomi
+dir
+
+ifenslave
+dir
+

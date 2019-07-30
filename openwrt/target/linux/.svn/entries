@@ -1,0 +1,119 @@
+10
+
+dir
+19086
+svn+ssh://openwrt@svn.openwrt.org/openwrt/tags/8.09.2/target/linux
+svn+ssh://openwrt@svn.openwrt.org/openwrt
+
+
+
+2009-12-29T13:42:41.329489Z
+18961
+agb
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3c298f89-4303-0410-b956-a3cf2f4a3e73
+
+generic-2.6
+dir
+
+ifxmips
+dir
+
+ppc44x
+dir
+
+brcm-2.4
+dir
+
+x86
+dir
+
+ar7
+dir
+
+magicbox
+dir
+
+ar71xx
+dir
+
+uml
+dir
+
+rb532
+dir
+
+avr32
+dir
+
+ixp4xx
+dir
+
+atheros
+dir
+
+au1000
+dir
+
+rdc
+dir
+
+adm5120
+dir
+
+generic-2.4
+dir
+
+Makefile
+file
+
+
+
+
+2009-12-29T13:24:24.000000Z
+4a3c6e549c402779f6bbd7aee0226372
+2009-12-29T13:42:41.329489Z
+18961
+agb
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+365
+
+ppc40x
+dir
+
+brcm47xx
+dir
+

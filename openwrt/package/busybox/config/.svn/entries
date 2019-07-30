@@ -1,0 +1,125 @@
+10
+
+dir
+19086
+svn+ssh://openwrt@svn.openwrt.org/openwrt/tags/8.09.2/package/busybox/config
+svn+ssh://openwrt@svn.openwrt.org/openwrt
+
+
+
+2009-12-29T13:42:41.329489Z
+18961
+agb
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3c298f89-4303-0410-b956-a3cf2f4a3e73
+
+ipsvd
+dir
+
+selinux
+dir
+
+networking
+dir
+
+archival
+dir
+
+loginutils
+dir
+
+sysklogd
+dir
+
+console-tools
+dir
+
+modutils
+dir
+
+runit
+dir
+
+findutils
+dir
+
+debianutils
+dir
+
+init
+dir
+
+procps
+dir
+
+shell
+dir
+
+editors
+dir
+
+coreutils
+dir
+
+libbb
+dir
+
+e2fsprogs
+dir
+
+util-linux
+dir
+
+Config.in
+file
+
+
+
+
+2009-12-29T13:24:12.000000Z
+d33ef44ea19bed1ffc19ef64f5d117b7
+2009-12-29T13:42:41.329489Z
+18961
+agb
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+20483
+
+miscutils
+dir
+
+printutils
+dir
+

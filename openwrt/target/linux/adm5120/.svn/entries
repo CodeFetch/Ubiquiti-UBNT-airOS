@@ -1,0 +1,80 @@
+10
+
+dir
+19086
+svn+ssh://openwrt@svn.openwrt.org/openwrt/tags/8.09.2/target/linux/adm5120
+svn+ssh://openwrt@svn.openwrt.org/openwrt
+
+
+
+2009-12-29T13:42:41.329489Z
+18961
+agb
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+3c298f89-4303-0410-b956-a3cf2f4a3e73
+
+router_le
+dir
+
+image
+dir
+
+files
+dir
+
+router_be
+dir
+
+patches
+dir
+
+base-files
+dir
+
+Makefile
+file
+
+
+
+
+2009-12-29T13:24:24.000000Z
+73a5d1079601df5ad92c47d7a340c24f
+2009-12-29T13:42:41.329489Z
+18961
+agb
+has-props
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+511
+
