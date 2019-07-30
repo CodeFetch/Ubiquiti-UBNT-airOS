@@ -1,0 +1,19 @@
+--- a/genconfig.sh
++++ b/genconfig.sh
+@@ -271,13 +271,14 @@
+ 		fi
+ 		echo "#define USE_IFACEWATCHER 1" >> ${CONFIGFILE}
+ 		FW=netfilter
+ 		V6SOCKETS_ARE_V6ONLY=`/sbin/sysctl -n net.ipv6.bindv6only`
+ 		;;
+ 	OpenWRT)
+-		OS_URL=http://www.openwrt.org/
++		OS_NAME=AirOS
++		OS_URL=http://www.ubnt.com/
+ 		echo "#define USE_IFACEWATCHER 1" >> ${CONFIGFILE}
+ 		FW=netfilter
+ 		;;
+ 	AstLinux)
+ 		OS_URL=http://www.astlinux.org/
+ 		echo "#define USE_IFACEWATCHER 1" >> ${CONFIGFILE}
+

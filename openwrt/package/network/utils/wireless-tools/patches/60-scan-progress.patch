@@ -1,0 +1,25 @@
+Index: wireless_tools.29/iwlist.c
+===================================================================
+--- wireless_tools.29.orig/iwlist.c
++++ wireless_tools.29/iwlist.c
+@@ -867,7 +867,7 @@ print_scanning_info(int		skfd,
+ 	printf(":%02X", buffer[i]);
+       printf("]\n");
+ #endif
+-      printf("%-8.16s  Scan completed :\n", ifname);
++      printf("%-8.16s  Scan %s :\n", ifname, ((wrq.u.data.flags & 0x8000) ? "in progress" : "completed" ));
+       iw_init_event_stream(&stream, (char *) buffer, wrq.u.data.length);
+       do
+ 	{
+@@ -882,7 +882,10 @@ print_scanning_info(int		skfd,
+       printf("\n");
+     }
+   else
+-    printf("%-8.16s  No scan results\n\n", ifname);
++	{
++      printf("%-8.16s  Scan %s :\n", ifname, ((wrq.u.data.flags & 0x8000) ? "in progress" : "completed" ));
++      printf("%-8.16s  No scan results\n\n", ifname);
++    }
+ 
+   free(buffer);
+   return(0);

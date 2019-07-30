@@ -1,0 +1,55 @@
+--- a/src/ap/ieee802_1x.c
++++ b/src/ap/ieee802_1x.c
+@@ -1317,6 +1317,7 @@ ieee802_1x_receive_auth(struct radius_ms
+ 			sta->acct_interim_interval = acct_interim_interval;
+ 	}
+ 
++        sta->sessionTimeout = (session_timeout_set ? session_timeout : 0);
+ 
+ 	switch (hdr->code) {
+ 	case RADIUS_CODE_ACCESS_ACCEPT:
+@@ -2115,7 +2116,8 @@ static void ieee802_1x_finished(struct h
+ 
+ 	key = ieee802_1x_get_key(sta->eapol_sm, &len);
+ 	if (success && key && len >= PMK_LEN &&
+-	    wpa_auth_pmksa_add(sta->wpa_sm, key, dot11RSNAConfigPMKLifetime,
++	    wpa_auth_pmksa_add(sta->wpa_sm, key, sta->sessionTimeout ?
++                               sta->sessionTimeout : dot11RSNAConfigPMKLifetime,
+ 			       sta->eapol_sm) == 0) {
+ 		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_WPA,
+ 			       HOSTAPD_LEVEL_DEBUG,
+--- a/src/ap/pmksa_cache_auth.c
++++ b/src/ap/pmksa_cache_auth.c
+@@ -114,9 +114,9 @@ static void pmksa_cache_set_expiration(s
+ 		return;
+ 	os_get_reltime(&now);
+ 	sec = pmksa->pmksa->expiration - now.sec;
+-	if (sec < 0)
+-		sec = 0;
+-	eloop_register_timeout(sec + 1, 0, pmksa_cache_expire, pmksa, NULL);
++	if (sec < 1)
++		sec = 1;
++	eloop_register_timeout(sec, 0, pmksa_cache_expire, pmksa, NULL);
+ }
+ 
+ 
+@@ -214,6 +214,8 @@ static void pmksa_cache_link_entry(struc
+ 	wpa_printf(MSG_DEBUG, "RSN: added PMKSA cache entry for " MACSTR,
+ 		   MAC2STR(entry->spa));
+ 	wpa_hexdump(MSG_DEBUG, "RSN: added PMKID", entry->pmkid, PMKID_LEN);
++
++        pmksa_cache_set_expiration(pmksa);
+ }
+ 
+ 
+--- a/src/ap/sta_info.h
++++ b/src/ap/sta_info.h
+@@ -129,6 +129,8 @@ struct sta_info {
+ #ifdef CONFIG_SAE
+ 	struct sae_data *sae;
+ #endif /* CONFIG_SAE */
++
++        u32 sessionTimeout;
+ };
+ 
+ 

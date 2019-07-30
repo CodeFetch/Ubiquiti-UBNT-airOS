@@ -1,0 +1,21 @@
+--- a/src/drivers/driver_wext.c
++++ b/src/drivers/driver_wext.c
+@@ -1135,6 +1135,7 @@
+ 				    size_t *len)
+ {
+ 	struct iwreq iwr;
++    struct iw_param req_offset;
+ 	u8 *res_buf;
+ 	size_t res_buf_len;
+ 
+@@ -1143,6 +1144,10 @@
+ 		res_buf = os_malloc(res_buf_len);
+ 		if (res_buf == NULL)
+ 			return NULL;
++		os_memset(&req_offset, 0, sizeof(req_offset));
++	    req_offset.value = 0;
++	    req_offset.disabled = 1;
++	    os_memcpy(res_buf, &req_offset, sizeof(req_offset));
+ 		os_memset(&iwr, 0, sizeof(iwr));
+ 		os_strlcpy(iwr.ifr_name, drv->ifname, IFNAMSIZ);
+ 		iwr.u.data.pointer = res_buf;

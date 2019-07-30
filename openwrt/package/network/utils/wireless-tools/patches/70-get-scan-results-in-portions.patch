@@ -1,0 +1,87 @@
+--- a/iwlist.c
++++ b/iwlist.c
+@@ -456,9 +456,9 @@
+   switch(event->cmd)
+     {
+     case SIOCGIWAP:
++      state->ap_num++;
+       printf("          Cell %02d - Address: %s\n", state->ap_num,
+ 	     iw_saether_ntop(&event->u.ap_addr, buffer));
+-      state->ap_num++;
+       break;
+     case SIOCGIWNWID:
+       if(event->u.nwid.disabled)
+@@ -618,6 +618,8 @@
+   int			has_range;
+   struct timeval	tv;				/* Select timeout */
+   int			timeout = 15000000;		/* 15s */
++  struct iwscan_state   state = { .ap_num = 0, .val_index = 0 };
++  struct iw_param  req_offset;
+ 
+   /* Avoid "Unused parameter" warning */
+   args = args; count = count;
+@@ -648,6 +650,7 @@
+ 
+   /* Clean up set args */
+   memset(&scanopt, 0, sizeof(scanopt));
++  memset(&req_offset, 0, sizeof(req_offset));
+ 
+   /* Parse command line arguments and extract options.
+    * Note : when we have enough options, we should use the parser
+@@ -789,11 +792,16 @@
+ 	  wrq.u.data.pointer = buffer;
+ 	  wrq.u.data.flags = 0;
+ 	  wrq.u.data.length = buflen;
++	  /* Pass an offset of results to get forom driver */
++	  req_offset.value = state.ap_num;
++     memcpy(buffer, &req_offset, sizeof(req_offset));
++
+ 	  if(iw_get_ext(skfd, ifname, SIOCGIWSCAN, &wrq) < 0)
+ 	    {
+ 	      /* Check if buffer was too small */
+ 	      if(errno == E2BIG)
+ 		{
++       incompleate:
+ 		  /* Some driver may return very large scan results, either
+ 		   * because there are many cells, or because they have many
+ 		   * large elements in cells (like IWEVCUSTOM). Most will
+@@ -806,7 +814,7 @@
+ 		  if(wrq.u.data.length > buflen)
+ 		    buflen = wrq.u.data.length;
+ 		  else {
+-			  if(buflen > 60000) {
++			  if(buflen > 0xFFFF) {
+ 				  if(buffer)
+ 					  free(buffer);
+ 				  fprintf(stderr, "%s: buffer too large(%d) for realocating\n", __FUNCTION__, buflen);
+@@ -856,7 +864,6 @@
+     {
+       struct iw_event		iwe;
+       struct stream_descr	stream;
+-      struct iwscan_state	state = { .ap_num = 1, .val_index = 0 };
+       int			ret;
+       
+ #ifdef DEBUG
+@@ -867,7 +874,10 @@
+ 	printf(":%02X", buffer[i]);
+       printf("]\n");
+ #endif
+-      printf("%-8.16s  Scan %s :\n", ifname, ((wrq.u.data.flags & 0x8000) ? "in progress" : "completed" ));
++      if (!state.ap_num)
++      {  /* Print header if we got a first portion */
++        printf("%-8.16s  Scan %s :\n", ifname, ((wrq.u.data.flags & 0x8000) ? "in progress" : "completed" ));
++      }
+       iw_init_event_stream(&stream, (char *) buffer, wrq.u.data.length);
+       do
+ 	{
+@@ -879,6 +889,10 @@
+ 				 &range, has_range);
+ 	}
+       while(ret > 0);
++      /* Driver has marked results are incompleate (a buffer was too small): */
++      /* go increase buffer and realloc */
++      if (wrq.u.data.flags & 0x4000)
++          goto incompleate;
+       printf("\n");
+     }
+   else

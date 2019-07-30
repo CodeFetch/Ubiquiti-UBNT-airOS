@@ -1,0 +1,17 @@
+--- a/iwlib.c
++++ b/iwlib.c
+@@ -2760,6 +2760,14 @@
+   if(iwe->len <= IW_EV_LCP_PK_LEN)
+     return(-1);
+ 
++  /* Ignore scan done events here*/
++  if(iwe->cmd == SIOCGIWSCAN)
++  {
++    /* Skip to next event */
++    stream->current += iwe->len;
++    return(2);
++  }
++
+   /* Get the type and length of that event */
+   if(iwe->cmd <= SIOCIWLAST)
+     {

@@ -1,0 +1,510 @@
+--- a/genconfig.sh
++++ b/genconfig.sh
+@@ -558,11 +558,13 @@
+ /* maximum lenght of SSDP packets we are generating
+  * (reception is done in a 1500byte buffer) */
+ #define SSDP_PACKET_MAX_LEN 1024
+ 
+ EOF
+ 
++echo "#define MY_LOG_DEBUG(...)" >> ${CONFIGFILE}
++
+ echo "#endif /* ${CONFIGMACRO} */" >> ${CONFIGFILE}
+ 
+ ${MV} ${CONFIGFILE} ${CONFIGFILE_FINAL}
+ 
+ exit 0
+--- a/minissdp.c
++++ b/minissdp.c
+@@ -821,13 +821,13 @@
+ 
+ 	/* get the string representation of the sender address */
+ 	sockaddr_to_string(sender, sender_str, sizeof(sender_str));
+ 	lan_addr = get_lan_for_peer(sender);
+ 	if(lan_addr == NULL)
+ 	{
+-		syslog(LOG_WARNING, "SSDP packet sender %s not from a LAN, ignoring",
++		MY_LOG_DEBUG("SSDP packet sender %s not from a LAN, ignoring",
+ 		       sender_str);
+ 		return;
+ 	}
+ 
+ 	if(memcmp(bufr, "NOTIFY", 6) == 0)
+ 	{
+@@ -852,13 +852,13 @@
+ 				     && (st + st_len < bufr + n))
+ 					st_len++;
+ 				l = st_len;
+ 				while(l > 0 && st[l-1] != ':')
+ 					l--;
+ 				st_ver = atoi(st+l);
+-				syslog(LOG_DEBUG, "ST: %.*s (ver=%d)", st_len, st, st_ver);
++				MY_LOG_DEBUG("ST: %.*s (ver=%d)", st_len, st, st_ver);
+ 				/*j = 0;*/
+ 				/*while(bufr[i+j]!='\r') j++;*/
+ 				/*syslog(LOG_INFO, "%.*s", j, bufr+i);*/
+ 			}
+ #if defined(UPNP_STRICT) || defined(DELAY_MSEARCH_RESPONSE)
+ 			else if((i < n - 3) && (strncasecmp(bufr+i, "mx:", 3) == 0))
+@@ -870,13 +870,13 @@
+ 				while((*mx == ' ' || *mx == '\t') && (mx < bufr + n))
+ 					mx++;
+ 				while(mx[mx_len]!='\r' && mx[mx_len]!='\n'
+ 				     && (mx + mx_len < bufr + n))
+ 					mx_len++;
+ 				mx_value = atoi(mx);
+-				syslog(LOG_DEBUG, "MX: %.*s (value=%d)", mx_len, mx, mx_value);
++				MY_LOG_DEBUG("MX: %.*s (value=%d)", mx_len, mx, mx_value);
+ 			}
+ #endif
+ 		}
+ #ifdef UPNP_STRICT
+ 		/* For multicast M-SEARCH requests, if the search request does
+ 		 * not contain an MX header field, the device MUST silently
+--- a/miniupnpd.c
++++ b/miniupnpd.c
+@@ -1591,13 +1591,13 @@
+ 	}
+ 
+ 	openlog("miniupnpd", openlog_option, LOG_MINIUPNPD);
+ 
+ 	if(!debug_flag)
+ 	{
+-		/* speed things up and ignore LOG_INFO and LOG_DEBUG */
++		/* speed things up and ignore LOG_INFO and MY_LOG_DEBUG */
+ 		setlogmask(LOG_UPTO(LOG_NOTICE));
+ 	}
+ 
+ 	if(checkforrunning(pidfilename) < 0)
+ 	{
+ 		syslog(LOG_ERR, "MiniUPnPd is already running. EXITING");
+@@ -2028,13 +2028,13 @@
+ 		{
+ 			set_startup_time(GETFLAG(SYSUPTIMEMASK));
+ 		}
+ 		/* send public address change notifications if needed */
+ 		if(should_send_public_address_change_notif)
+ 		{
+-			syslog(LOG_INFO, "should send external iface address change notification(s)");
++			MY_LOG_DEBUG("should send external iface address change notification(s)");
+ #ifdef ENABLE_NATPMP
+ 			if(GETFLAG(ENABLENATPMPMASK))
+ 				SendNATPMPPublicAddressChangeNotification(snatpmp, addr_count);
+ #endif
+ #ifdef ENABLE_EVENTS
+ 			if(GETFLAG(ENABLEUPNPMASK))
+@@ -2101,21 +2101,21 @@
+ 		}
+ 		/* Remove expired port mappings, based on UPnP IGD LeaseDuration
+ 		 * or NAT-PMP lifetime) */
+ 		if(nextruletoclean_timestamp
+ 		  && ((unsigned int)timeofday.tv_sec >= nextruletoclean_timestamp))
+ 		{
+-			syslog(LOG_DEBUG, "cleaning expired Port Mappings");
++			MY_LOG_DEBUG("cleaning expired Port Mappings");
+ 			get_upnp_rules_state_list(0);
+ 		}
+ 		if(nextruletoclean_timestamp
+ 		  && ((unsigned int)timeout.tv_sec >= (nextruletoclean_timestamp - timeofday.tv_sec)))
+ 		{
+ 			timeout.tv_sec = nextruletoclean_timestamp - timeofday.tv_sec;
+ 			timeout.tv_usec = 0;
+-			syslog(LOG_DEBUG, "setting timeout to %u sec",
++			MY_LOG_DEBUG("setting timeout to %u sec",
+ 			       (unsigned)timeout.tv_sec);
+ 		}
+ #ifdef ENABLE_UPNPPINHOLE
+ 		/* Clean up expired IPv6 PinHoles */
+ 		next_pinhole_ts = 0;
+ 		upnp_clean_expired_pinholes(&next_pinhole_ts);
+@@ -2200,13 +2200,13 @@
+ 			}
+ 		}
+ 		/* for debug */
+ #ifdef DEBUG
+ 		if(i > 1)
+ 		{
+-			syslog(LOG_DEBUG, "%d active incoming HTTP connections", i);
++			MY_LOG_DEBUG("%d active incoming HTTP connections", i);
+ 		}
+ #endif
+ #ifdef ENABLE_NATPMP
+ 		for(i=0; i<addr_count; i++) {
+ 			if(snatpmp[i] >= 0) {
+ 				FD_SET(snatpmp[i], &readset);
+@@ -2334,16 +2334,16 @@
+ 		if((sctl >= 0) && FD_ISSET(sctl, &readset))
+ 		{
+ 			int s;
+ 			struct sockaddr_un clientname;
+ 			struct ctlelem * tmp;
+ 			socklen_t clientnamelen = sizeof(struct sockaddr_un);
+-			/*syslog(LOG_DEBUG, "sctl!");*/
++			/*MY_LOG_DEBUG("sctl!");*/
+ 			s = accept(sctl, (struct sockaddr *)&clientname,
+ 			           &clientnamelen);
+-			syslog(LOG_DEBUG, "sctl! : '%s'", clientname.sun_path);
++			MY_LOG_DEBUG("sctl! : '%s'", clientname.sun_path);
+ 			tmp = malloc(sizeof(struct ctlelem));
+ 			if (tmp == NULL)
+ 			{
+ 				syslog(LOG_ERR, "Unable to allocate memory for ctlelem in main()");
+ 				close(s);
+ 			}
+@@ -2453,13 +2453,13 @@
+ 			ProcessSSDPRequest(sudp, (unsigned short)v.port);
+ #endif
+ 		}
+ #ifdef ENABLE_IPV6
+ 		if(sudpv6 >= 0 && FD_ISSET(sudpv6, &readset))
+ 		{
+-			syslog(LOG_INFO, "Received UDP Packet (IPv6)");
++			MY_LOG_DEBUG("Received UDP Packet (IPv6)");
+ #ifdef ENABLE_HTTPS
+ 			ProcessSSDPRequest(sudpv6, (unsigned short)v.port, (unsigned short)v.https_port);
+ #else
+ 			ProcessSSDPRequest(sudpv6, (unsigned short)v.port);
+ #endif
+ 		}
+--- a/natpmp.c
++++ b/natpmp.c
+@@ -173,13 +173,13 @@
+ 	}
+ 	for(h = CMSG_FIRSTHDR(&msg); h;
+ 	    h = CMSG_NXTHDR(&msg, h)) {
+ 		if(h->cmsg_level == IPPROTO_IPV6 && h->cmsg_type == IPV6_PKTINFO) {
+ 			char tmp[INET6_ADDRSTRLEN];
+ 			struct in6_pktinfo *ipi6 = (struct in6_pktinfo *)CMSG_DATA(h);
+-			syslog(LOG_DEBUG, "%s: packet destination: %s scope_id=%u",
++			MY_LOG_DEBUG("%s: packet destination: %s scope_id=%u",
+ 			       "ReceiveNATPMPOrPCPPacket",
+ 			       inet_ntop(AF_INET6, &ipi6->ipi6_addr, tmp, sizeof(tmp)),
+ 			       ipi6->ipi6_ifindex);
+ 			if(receiveraddr) {
+ 				receiveraddr->sin6_addr = ipi6->ipi6_addr;
+ 				receiveraddr->sin6_scope_id = ipi6->ipi6_ifindex;
+@@ -295,13 +295,13 @@
+ 				eport = 0; /* to indicate correct removing of port mapping */
+ 				while(get_redirect_rule_by_index(index, 0,
+ 				          &eport2, iaddr2, sizeof(iaddr2),
+ 						  &iport2, &proto2,
+ 						  desc, sizeof(desc),
+ 				          0, 0, &timestamp, 0, 0) >= 0) {
+-					syslog(LOG_DEBUG, "%d %d %hu->'%s':%hu '%s'",
++					MY_LOG_DEBUG("%d %d %hu->'%s':%hu '%s'",
+ 					       index, proto2, eport2, iaddr2, iport2, desc);
+ 					if(0 == strcmp(iaddr2, senderaddrstr)
+ 					  && 0 == memcmp(desc, "NAT-PMP", 7)) {
+ 						/* (iport == 0) => remove all the mappings for this client */
+ 						if((iport == 0) || ((iport == iport2) && (proto == proto2))) {
+ 							r = _upnp_delete_redir(eport2, proto2);
+--- a/testgetroute.c
++++ b/testgetroute.c
+@@ -75,25 +75,25 @@
+ 	}
+ 
+ 	if (dst) {
+ 		syslog(LOG_DEBUG, "calling get_src_for_route_to(%p, NULL, NULL, %p)",
+ 		       dst, &index);
+ 		r = get_src_for_route_to (dst, NULL, NULL, &index);
+-		syslog(LOG_DEBUG, "get_src_for_route_to() returned %d", r);
++		MY_LOG_DEBUG("get_src_for_route_to() returned %d", r);
+ 		if(r >= 0) {
+ 			syslog(LOG_DEBUG, "index=%d", index);
+ 		}
+-		syslog(LOG_DEBUG, "calling get_src_for_route_to(%p, %p, %p(%u), %p)",
++		MY_LOG_DEBUG("calling get_src_for_route_to(%p, %p, %p(%u), %p)",
+ 		       dst, src, &src_len, (unsigned)src_len, &index);
+ 		r = get_src_for_route_to (dst, src, &src_len, &index);
+-		syslog(LOG_DEBUG, "get_src_for_route_to() returned %d", r);
++		MY_LOG_DEBUG("get_src_for_route_to() returned %d", r);
+ 		if(r >= 0) {
+ 			char src_str[128];
+ 			sockaddr_to_string(dst, src_str, sizeof(src_str));
+-			syslog(LOG_DEBUG, "src=%s", src_str);
+-			syslog(LOG_DEBUG, "index=%d", index);
++			MY_LOG_DEBUG("src=%s", src_str);
++			MY_LOG_DEBUG("index=%d", index);
+ 		}
+ 	}
+ 	closelog();
+ 	return 0;
+ }
+ 
+--- a/upnpevents.c
++++ b/upnpevents.c
+@@ -125,13 +125,13 @@
+                          const char * callback, int callbacklen,
+                          int timeout)
+ {
+ 	struct subscriber * tmp;
+ 	/*static char uuid[42];*/
+ 	/* "uuid:00000000-0000-0000-0000-000000000000"; 5+36+1=42bytes */
+-	syslog(LOG_DEBUG, "addSubscriber(%s, %.*s, %d)",
++	MY_LOG_DEBUG("addSubscriber(%s, %.*s, %d)",
+ 	       eventurl, callbacklen, callback, timeout);
+ 	/*strncpy(uuid, uuidvalue, sizeof(uuid));
+ 	uuid[sizeof(uuid)-1] = '\0';*/
+ 	tmp = newSubscriber(eventurl, callback, callbacklen);
+ 	if(!tmp)
+ 		return NULL;
+@@ -319,13 +319,13 @@
+ #else
+ 	addr.sin_family = AF_INET;
+ 	inet_aton(obj->addrstr, &addr.sin_addr);
+ 	addr.sin_port = htons(port);
+ 	addrlen = sizeof(struct sockaddr_in);
+ #endif
+-	syslog(LOG_DEBUG, "%s: '%s' %hu '%s'", "upnp_event_notify_connect",
++	MY_LOG_DEBUG("%s: '%s' %hu '%s'", "upnp_event_notify_connect",
+ 	       obj->addrstr, port, obj->path);
+ 	obj->state = EConnecting;
+ 	if(connect(obj->s, (struct sockaddr *)&addr, addrlen) < 0) {
+ 		if(errno != EINPROGRESS && errno != EWOULDBLOCK) {
+ 			syslog(LOG_ERR, "%s: connect(%d, %s, %u): %m",
+ 			       "upnp_event_notify_connect", obj->s,
+@@ -404,13 +404,13 @@
+ }
+ 
+ static void upnp_event_send(struct upnp_event_notify * obj)
+ {
+ 	int i;
+ 
+-	syslog(LOG_DEBUG, "%s: sending event notify message to %s%s",
++	MY_LOG_DEBUG("%s: sending event notify message to %s%s",
+ 	       "upnp_event_send", obj->addrstr, obj->portstr);
+ 	syslog(LOG_DEBUG, "%s: msg: %s",
+ 	       "upnp_event_send", obj->buffer + obj->sent);
+ 	i = send(obj->s, obj->buffer + obj->sent, obj->tosend - obj->sent, 0);
+ 	if(i<0) {
+ 		if(errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+@@ -440,13 +440,13 @@
+ 		   errno != EINTR) {
+ 			syslog(LOG_ERR, "%s: recv(): %m", "upnp_event_recv");
+ 			obj->state = EError;
+ 		}
+ 		return;
+ 	}
+-	syslog(LOG_DEBUG, "%s: (%dbytes) %.*s", "upnp_event_recv",
++	MY_LOG_DEBUG("%s: (%dbytes) %.*s", "upnp_event_recv",
+ 	       n, n, obj->buffer);
+ 	/* TODO : do something with the data recevied ?
+ 	 * right now, n (number of bytes received) is ignored
+ 	 * We may need to recv() more bytes. */
+ 	obj->state = EFinished;
+ 	if(obj->sub)
+@@ -495,13 +495,13 @@
+ }
+ 
+ void upnpevents_selectfds(fd_set *readset, fd_set *writeset, int * max_fd)
+ {
+ 	struct upnp_event_notify * obj;
+ 	for(obj = notifylist.lh_first; obj != NULL; obj = obj->entries.le_next) {
+-		syslog(LOG_DEBUG, "upnpevents_selectfds: %p %d %d",
++		MY_LOG_DEBUG("upnpevents_selectfds: %p %d %d",
+ 		       obj, obj->state, obj->s);
+ 		if(obj->s >= 0) {
+ 			switch(obj->state) {
+ 			case ECreated:
+ 				upnp_event_notify_connect(obj);
+ 				if(obj->state != EConnecting)
+@@ -529,13 +529,13 @@
+ 	struct upnp_event_notify * obj;
+ 	struct upnp_event_notify * next;
+ 	struct subscriber * sub;
+ 	struct subscriber * subnext;
+ 	time_t curtime;
+ 	for(obj = notifylist.lh_first; obj != NULL; obj = obj->entries.le_next) {
+-		syslog(LOG_DEBUG, "%s: %p %d %d %d %d",
++		MY_LOG_DEBUG("%s: %p %d %d %d %d",
+ 		       "upnpevents_processfds", obj, obj->state, obj->s,
+ 		       FD_ISSET(obj->s, readset), FD_ISSET(obj->s, writeset));
+ 		if(obj->s >= 0) {
+ 			if(FD_ISSET(obj->s, readset) || FD_ISSET(obj->s, writeset))
+ 				upnp_event_process_notify(obj);
+ 		}
+--- a/upnphttp.c
++++ b/upnphttp.c
+@@ -266,13 +266,13 @@
+ 				p = colon;
+ 				n = 0;
+ 				while(*p == ':' || *p == ' ' || *p == '\t')
+ 					p++;
+ 				while(p[n]>=' ')
+ 					n++;
+-				syslog(LOG_DEBUG, "accept-language HTTP header : '%.*s'", n, p);
++				MY_LOG_DEBUG("accept-language HTTP header : '%.*s'", n, p);
+ 				/* keep only the 1st accepted language */
+ 				n = 0;
+ 				while(p[n]>' ' && p[n] != ',')
+ 					n++;
+ 				if(n >= (int)sizeof(h->accept_language))
+ 					n = (int)sizeof(h->accept_language) - 1;
+@@ -286,13 +286,13 @@
+ 				while(*p == ':' || *p == ' ' || *p == '\t')
+ 					p++;
+ 				while(p[n]>=' ')
+ 					n++;
+ 				if(strncasecmp(p, "100-continue", 12) == 0) {
+ 					h->respflags |= FLAG_CONTINUE;
+-					syslog(LOG_DEBUG, "\"Expect: 100-Continue\" header detected");
++					MY_LOG_DEBUG("\"Expect: 100-Continue\" header detected");
+ 				}
+ 			}
+ #ifdef ENABLE_EVENTS
+ 			else if(strncasecmp(line, "Callback:", 9)==0)
+ 			{
+ 				/* The Callback can contain several urls :
+@@ -602,17 +602,17 @@
+ }
+ 
+ static void
+ ProcessHTTPSubscribe_upnphttp(struct upnphttp * h, const char * path)
+ {
+ 	const char * sid;
+-	syslog(LOG_DEBUG, "ProcessHTTPSubscribe %s", path);
+-	syslog(LOG_DEBUG, "Callback '%.*s' Timeout=%d",
++	MY_LOG_DEBUG("ProcessHTTPSubscribe %s", path);
++	MY_LOG_DEBUG("Callback '%.*s' Timeout=%d",
+ 	       h->req_CallbackLen, h->req_buf + h->req_CallbackOff,
+ 	       h->req_Timeout);
+-	syslog(LOG_DEBUG, "SID '%.*s'", h->req_SIDLen, h->req_buf + h->req_SIDOff);
++	MY_LOG_DEBUG("SID '%.*s'", h->req_SIDLen, h->req_buf + h->req_SIDOff);
+ 	if((h->req_CallbackOff <= 0) && (h->req_SIDOff <= 0)) {
+ 		/* Missing or invalid CALLBACK : 412 Precondition Failed.
+ 		 * If CALLBACK header is missing or does not contain a valid HTTP URL,
+ 		 * the publisher must respond with HTTP error 412 Precondition Failed*/
+ 		BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
+ 		SendRespAndClose_upnphttp(h);
+@@ -639,13 +639,13 @@
+ #endif
+ 			if(checkCallbackURL(h)) {
+ 				sid = upnpevents_addSubscriber(path, h->req_buf + h->req_CallbackOff,
+ 				                               h->req_CallbackLen, h->req_Timeout);
+ 				h->respflags = FLAG_TIMEOUT;
+ 				if(sid) {
+-					syslog(LOG_DEBUG, "generated sid=%s", sid);
++					MY_LOG_DEBUG("generated sid=%s", sid);
+ 					h->respflags |= FLAG_SID;
+ 					h->res_SID = sid;
+ 				}
+ 				BuildResp_upnphttp(h, 0, 0);
+ 			} else {
+ 				syslog(LOG_WARNING, "Invalid Callback in SUBSCRIBE %.*s",
+@@ -677,14 +677,14 @@
+ 	}
+ }
+ 
+ static void
+ ProcessHTTPUnSubscribe_upnphttp(struct upnphttp * h, const char * path)
+ {
+-	syslog(LOG_DEBUG, "ProcessHTTPUnSubscribe %s", path);
+-	syslog(LOG_DEBUG, "SID '%.*s'", h->req_SIDLen, h->req_buf + h->req_SIDOff);
++	MY_LOG_DEBUG("ProcessHTTPUnSubscribe %s", path);
++	MY_LOG_DEBUG("SID '%.*s'", h->req_SIDLen, h->req_buf + h->req_SIDOff);
+ 	/* Remove from the list */
+ #ifdef UPNP_STRICT
+ 	if(h->req_SIDOff <= 0 || h->req_SIDLen == 0) {
+ 		/* SID: header missing or empty */
+ 		BuildResp2_upnphttp(h, 412, "Precondition Failed", 0, 0);
+ 	} else if(h->req_CallbackOff > 0 || h->req_NTOff > 0) {
+--- a/upnppermissions.c
++++ b/upnppermissions.c
+@@ -248,17 +248,17 @@
+ {
+ 	int i;
+ 	for(i=0; i<n_perms; i++)
+ 	{
+ 		if(match_permission(permary + i, eport, address, iport))
+ 		{
+-			syslog(LOG_DEBUG,
++			MY_LOG_DEBUG(
+ 			       "UPnP permission rule %d matched : port mapping %s",
+ 			       i, (permary[i].type == UPNPPERM_ALLOW)?"accepted":"rejected"
+ 			       );
+ 			return (permary[i].type == UPNPPERM_ALLOW);
+ 		}
+ 	}
+-	syslog(LOG_DEBUG, "no permission rule matched : accept by default (n_perms=%d)", n_perms);
++	MY_LOG_DEBUG("no permission rule matched : accept by default (n_perms=%d)", n_perms);
+ 	return 1;	/* Default : accept */
+ }
+ 
+--- a/upnpredirect.c
++++ b/upnpredirect.c
+@@ -172,13 +172,13 @@
+ 	if(unlink(lease_file) < 0) {
+ 		syslog(LOG_WARNING, "could not unlink file %s : %m", lease_file);
+ 	}
+ 
+ 	current_time = time(NULL);
+ 	while(fgets(line, sizeof(line), fd)) {
+-		syslog(LOG_DEBUG, "parsing lease file line '%s'", line);
++		MY_LOG_DEBUG("parsing lease file line '%s'", line);
+ 		proto = line;
+ 		p = strchr(line, ':');
+ 		if(!p) {
+ 			syslog(LOG_ERR, "unrecognized data in lease file");
+ 			continue;
+ 		}
+--- a/upnpsoap.c
++++ b/upnpsoap.c
+@@ -2161,13 +2161,13 @@
+ 		p++;
+ 		p2 = strchr(p, '"');
+ 		if(p2 && (p2 - action) <= n)
+ 			methodlen = p2 - p;
+ 		else
+ 			methodlen = n - (p - action);
+-		/*syslog(LOG_DEBUG, "SoapMethod: %.*s %d %d %p %p %d",
++		/*MY_LOG_DEBUG("SoapMethod: %.*s %d %d %p %p %d",
+ 		       methodlen, p, methodlen, n, action, p, (int)(p - action));*/
+ 		for(i = 0; soapMethods[i].methodName; i++) {
+ 			len = strlen(soapMethods[i].methodName);
+ 			if((len == methodlen) && memcmp(p, soapMethods[i].methodName, len) == 0) {
+ #ifdef DEBUG
+ 				syslog(LOG_DEBUG, "Remote Call of SoapMethod '%s'",
+--- a/upnputils.c
++++ b/upnputils.c
+@@ -135,19 +135,19 @@
+ 				index = (int)peer6->sin6_scope_id;
+ 			else
+ 			{
+ 				if(get_src_for_route_to(peer, NULL, NULL, &index) < 0)
+ 					return NULL;
+ 			}
+-			syslog(LOG_DEBUG, "%s looking for LAN interface index=%d",
++			MY_LOG_DEBUG("%s looking for LAN interface index=%d",
+ 			       "get_lan_for_peer()", index);
+ 			for(lan_addr = lan_addrs.lh_first;
+ 			    lan_addr != NULL;
+ 			    lan_addr = lan_addr->list.le_next)
+ 			{
+-				syslog(LOG_DEBUG,
++				MY_LOG_DEBUG(
+ 				       "ifname=%s index=%u str=%s addr=%08x mask=%08x",
+ 				       lan_addr->ifname, lan_addr->index,
+ 				       lan_addr->str,
+ 				       ntohl(lan_addr->addr.s_addr),
+ 				       ntohl(lan_addr->mask.s_addr));
+ 				if(index == (int)lan_addr->index)
+@@ -170,17 +170,17 @@
+ 	}
+ #endif /* ENABLE_IPV6 */
+ 
+ #ifdef DEBUG
+ 	sockaddr_to_string(peer, dbg_str, sizeof(dbg_str));
+ 	if(lan_addr) {
+-		syslog(LOG_DEBUG, "%s: %s found in LAN %s %s",
++		MY_LOG_DEBUG("%s: %s found in LAN %s %s",
+ 		       "get_lan_for_peer()", dbg_str,
+ 		       lan_addr->ifname, lan_addr->str);
+ 	} else {
+-		syslog(LOG_DEBUG, "%s: %s not found !", "get_lan_for_peer()",
++		MY_LOG_DEBUG("%s: %s not found !", "get_lan_for_peer()",
+ 		       dbg_str);
+ 	}
+ #endif /* DEBUG */
+ 	return lan_addr;
+ }
+ 

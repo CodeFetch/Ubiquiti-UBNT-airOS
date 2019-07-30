@@ -1,0 +1,20 @@
+--- a/agent/module-system.c
++++ b/agent/module-system.c
+@@ -250,6 +250,8 @@
+ 		return (-1);
+ 	 }
+ 
++   odb_remove (odb,sysName);
++
+    value.type = BER_OCTET_STRING;
+    value.data.OCTET_STRING.len = strlen (buf.nodename);
+    value.data.OCTET_STRING.buf = (uint8_t *) buf.nodename;
+@@ -302,7 +304,7 @@
+ 		{ update_oid, 1 },
+ 		{ update_uptime, 0 },
+ 		{ update_contact, 1 },
+-		{ update_hostname, 1 },
++		{ update_hostname, 0 },
+ 		{ update_location, 1 },
+ 		{ update_services, 1 }
+ 	 };

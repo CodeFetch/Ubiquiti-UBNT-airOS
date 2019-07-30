@@ -1,0 +1,23 @@
+--- a/pppstats/pppstats.c
++++ b/pppstats/pppstats.c
+@@ -266,17 +266,17 @@ get_ppp_cstats(csp)
+ 	    exit(1);
+ 	}
+     }
+ }
+ 
+ #endif /* STREAMS */
+ 
+-#define MAX0(a)		((int)(a) > 0? (a): 0)
+-#define V(offset)	MAX0(cur.offset - old.offset)
+-#define W(offset)	MAX0(ccs.offset - ocs.offset)
++#define MAX0(a)		((long long int)(a) > 0? (a): 0)
++#define V(offset)	(aflag ? (cur.offset) : MAX0(cur.offset - old.offset))
++#define W(offset)	(aflag ? (ccs.offset) : MAX0(ccs.offset - ocs.offset))
+ 
+ #define RATIO(c, i, u)	((c) == 0? 1.0: (u) / ((double)(c) + (i)))
+ #define CRATE(x)	RATIO(W(x.comp_bytes), W(x.inc_bytes), W(x.unc_bytes))
+ 
+ #define KBPS(n)		((n) / (interval * 1000.0))
+ 
+ /*

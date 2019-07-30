@@ -1,0 +1,154 @@
+--- a/pppd/main.c
++++ b/pppd/main.c
+@@ -225,15 +225,15 @@ struct subprocess {
+     struct subprocess *next;
+ };
+ 
+ static struct subprocess *children;
+ 
+ /* Prototypes for procedures local to this file. */
+ 
+-static void check_time(void);
++static int gettimeofday_sync(struct timeval *tv);
+ static void setup_signals __P((void));
+ static void create_pidfile __P((int pid));
+ static void create_linkpidfile __P((int pid));
+ static void cleanup __P((void));
+ static void get_input __P((void));
+ static void calltimeout __P((void));
+ static struct timeval *timeleft __P((struct timeval *));
+@@ -533,16 +533,15 @@ main(argc, argv)
+ 	    /*
+ 	     * Now we want to bring up the link.
+ 	     */
+ 	    demand_block();
+ 	    info("Starting link");
+ 	}
+ 
+-	check_time();
+-	gettimeofday(&start_time, NULL);
++	gettimeofday_sync(&start_time);
+ 	script_unsetenv("CONNECT_TIME");
+ 	script_unsetenv("BYTES_SENT");
+ 	script_unsetenv("BYTES_RCVD");
+ 
+ 	lcp_open(0);		/* Start protocol */
+ 	start_link(0);
+ 	while (phase != PHASE_DEAD) {
+@@ -1301,40 +1300,55 @@ struct	callout {
+ };
+ 
+ static struct callout *callout = NULL;	/* Callout list */
+ static struct timeval timenow;		/* Current time */
+ static long uptime_diff = 0;
+ static int uptime_diff_set = 0;
+ 
+-static void check_time(void)
++static int check_time(void)
+ {
+ 	long new_diff;
+ 	struct timeval t;
+ 	struct sysinfo i;
+     struct callout *p;
+-	
++	int rv = 0;
++
+ 	gettimeofday(&t, NULL);
+ 	sysinfo(&i);
+ 	new_diff = t.tv_sec - i.uptime;
+ 	
+ 	if (!uptime_diff_set) {
+ 		uptime_diff = new_diff;
+ 		uptime_diff_set = 1;
+-		return;
++		return rv;
+ 	}
+ 
+ 	if ((new_diff - 5 > uptime_diff) || (new_diff + 5 < uptime_diff)) {
++		rv = 1;
+ 		/* system time has changed, update counters and timeouts */
+ 		info("System time change detected.");
+ 		start_time.tv_sec += new_diff - uptime_diff;
+ 		
+     	for (p = callout; p != NULL; p = p->c_next)
+ 			p->c_time.tv_sec += new_diff - uptime_diff;
+ 	}
+ 	uptime_diff = new_diff;
++	return rv;
++}
++
++static int gettimeofday_sync(struct timeval *tv)
++{
++	int rv = 0;
++	check_time();
++	do
++	{
++		rv = gettimeofday(tv, NULL);
++	}
++	while (check_time());
++	return rv;
+ }
+ 
+ /*
+  * timeout - Schedule a timeout.
+  */
+ void
+ timeout(func, arg, secs, usecs)
+@@ -1347,15 +1361,15 @@ timeout(func, arg, secs, usecs)
+     /*
+      * Allocate timeout.
+      */
+     if ((newp = (struct callout *) malloc(sizeof(struct callout))) == NULL)
+ 	fatal("Out of memory in timeout()!");
+     newp->c_arg = arg;
+     newp->c_func = func;
+-    gettimeofday(&timenow, NULL);
++    gettimeofday_sync(&timenow);
+     newp->c_time.tv_sec = timenow.tv_sec + secs;
+     newp->c_time.tv_usec = timenow.tv_usec + usecs;
+     if (newp->c_time.tv_usec >= 1000000) {
+ 	newp->c_time.tv_sec += newp->c_time.tv_usec / 1000000;
+ 	newp->c_time.tv_usec %= 1000000;
+     }
+ 
+@@ -1398,20 +1412,18 @@ untimeout(func, arg)
+  * calltimeout - Call any timeout routines which are now due.
+  */
+ static void
+ calltimeout()
+ {
+     struct callout *p;
+ 
+-	check_time();
+-	
+     while (callout != NULL) {
+ 	p = callout;
+ 
+-	if (gettimeofday(&timenow, NULL) < 0)
++	if (gettimeofday_sync(&timenow) < 0)
+ 	    fatal("Failed to get time of day: %m");
+ 	if (!(p->c_time.tv_sec < timenow.tv_sec
+ 	      || (p->c_time.tv_sec == timenow.tv_sec
+ 		  && p->c_time.tv_usec <= timenow.tv_usec)))
+ 	    break;		/* no, it's not time yet */
+ 
+ 	callout = p->c_next;
+@@ -1428,17 +1440,15 @@ calltimeout()
+ static struct timeval *
+ timeleft(tvp)
+     struct timeval *tvp;
+ {
+     if (callout == NULL)
+ 	return NULL;
+ 	
+-	check_time();
+-
+-    gettimeofday(&timenow, NULL);
++	gettimeofday_sync(&timenow);
+     tvp->tv_sec = callout->c_time.tv_sec - timenow.tv_sec;
+     tvp->tv_usec = callout->c_time.tv_usec - timenow.tv_usec;
+     if (tvp->tv_usec < 0) {
+ 	tvp->tv_usec += 1000000;
+ 	tvp->tv_sec -= 1;
+     }
+     if (tvp->tv_sec < 0)

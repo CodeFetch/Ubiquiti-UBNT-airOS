@@ -1,0 +1,30 @@
+--- a/src/drivers/driver_wext.c
++++ b/src/drivers/driver_wext.c
+@@ -1188,6 +1188,7 @@ struct wext_scan_data {
+ 	u8 ssid[32];
+ 	size_t ssid_len;
+ 	int maxrate;
++	int	airmax;
+ };
+ 
+ 
+@@ -1404,6 +1405,8 @@ static void wext_get_scan_custom(struct
+ 			return;
+ 		}
+ 		res->res.tsf += WPA_GET_BE64(bin);
++	} else if (clen > 6 && os_strncmp(custom, "airmax", 6) == 0) {
++		res->airmax = 1;
+ 	}
+ }
+ 
+@@ -1424,6 +1427,10 @@ static void wpa_driver_wext_add_scan_ent
+ 	size_t extra_len;
+ 	u8 *pos, *end, *ssid_ie = NULL, *rate_ie = NULL;
+ 
++	/* ignore all non-airmax APs */
++	if (!data->airmax)
++		return;
++
+ 	/* Figure out whether we need to fake any IEs */
+ 	pos = data->ie;
+ 	end = pos + data->ie_len;
