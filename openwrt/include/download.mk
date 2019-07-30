@@ -11,7 +11,7 @@ DOWNLOAD_RDEP=$(STAMP_PREPARED)
 define dl_method 
 $(strip \
   $(if $(2),$(2), \
-    $(if $(filter @GNOME/% @GNU/% @KERNEL/% @SF/% ftp://% http://%,$(1)),default, \
+    $(if $(filter @GNOME/% @GNU/% @KERNEL/% @SF/% ftp://% http://% https://%,$(1)),default, \
       $(if $(filter git://%,$(1)),git, \
         $(if $(filter svn://%,$(1)),svn, \
           $(if $(filter cvs://%,$(1)),cvs, \
@@ -29,6 +29,7 @@ endef
 # code for creating tarballs from cvs/svn/git/hg checkouts - useful for mirror support
 dl_pack/bz2=$(TAR) cfj $(1) $(2)
 dl_pack/gz=$(TAR) cfz $(1) $(2)
+dl_pack/xz=$(TAR) c $(2) | xz -zc > $(1)
 dl_pack/unknown=echo "ERROR: Unknown pack format for file $(1)"; false
 define dl_pack
 	$(if $(dl_pack/$(call ext,$(1))),$(dl_pack/$(call ext,$(1))),$(dl_pack/unknown))

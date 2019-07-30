@@ -4,7 +4,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: crypto.mk 18961 2009-12-29 13:42:41Z agb $
+# $Id: crypto.mk 12752 2008-09-28 07:09:47Z florian $
 
 CRYPTO_MENU:=Cryptographic API modules
 
@@ -30,6 +30,20 @@ ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.26)),1)
   SHA512_SUFFIX:=$(CRYPTO_GENERIC)
 endif
 
+CRYPTO_MODULES = \
+        ALGAPI=crypto_algapi \
+        CBC=cbc \
+        DEFLATE=deflate \
+        ECB=ecb
+
+#        BLKCIPHER=$(BLKCIPHER_PREFIX)blkcipher \
+#        HASH=crypto_hash \
+#        MANAGER=cryptomgr
+
+crypto_confvar=CONFIG_CRYPTO_$(word 1,$(subst =,$(space),$(1)))
+crypto_file=$(if $(findstring y,$($(call crypto_confvar,$(1)))),,$(LINUX_DIR)/crypto/$(word 2,$(subst =,$(space),$(1))).ko)
+crypto_name=$(if $(findstring y,$($(call crypto_confvar,$(1)))),,$(word 2,$(subst =,$(space),$(1))))
+
 # XXX: added CONFIG_CRYPTO_HMAC to KCONFIG so that CONFIG_CRYPTO_HASH is 
 # always set, even if no hash modules are selected
 define KernelPackage/crypto-core
@@ -37,31 +51,13 @@ define KernelPackage/crypto-core
   TITLE:=Core CryptoAPI modules
   KCONFIG:= \
 	CONFIG_CRYPTO=y \
-	CONFIG_CRYPTO_ALGAPI \
 	CONFIG_CRYPTO_BLKCIPHER \
-	CONFIG_CRYPTO_CBC \
-	CONFIG_CRYPTO_DEFLATE \
-	CONFIG_CRYPTO_ECB \
 	CONFIG_CRYPTO_HASH \
+	CONFIG_CRYPTO_MANAGER \
 	CONFIG_CRYPTO_HMAC \
-	CONFIG_CRYPTO_MANAGER
-  FILES:= \
-	$(LINUX_DIR)/crypto/crypto_algapi.$(LINUX_KMOD_SUFFIX) \
-	$(LINUX_DIR)/crypto/$(BLKCIPHER_PREFIX)blkcipher.$(LINUX_KMOD_SUFFIX) \
-	$(LINUX_DIR)/crypto/cbc.$(LINUX_KMOD_SUFFIX) \
-	$(LINUX_DIR)/crypto/deflate.$(LINUX_KMOD_SUFFIX) \
-	$(LINUX_DIR)/crypto/ecb.$(LINUX_KMOD_SUFFIX) \
-	$(LINUX_DIR)/crypto/crypto_hash.$(LINUX_KMOD_SUFFIX) \
-	$(LINUX_DIR)/crypto/cryptomgr.$(LINUX_KMOD_SUFFIX)
-  AUTOLOAD:=$(call AutoLoad,01, \
-	crypto_algapi \
-	cryptomgr \
-	crypto_hash \
-	$(BLKCIPHER_PREFIX)blkcipher \
-	cbc \
-	ecb \
-	deflate \
-  )
+	$(foreach mod,$(CRYPTO_MODULES),$(call crypto_confvar,$(mod)))
+  FILES:=$(foreach mod,$(CRYPTO_MODULES),$(call crypto_file,$(mod)))
+  AUTOLOAD:=$(call AutoLoad,01,$(foreach mod,$(CRYPTO_MODULES),$(call crypto_name,$(mod))))
 endef
 
 define KernelPackage/crypto-core/2.4
@@ -226,6 +222,18 @@ define KernelPackage/crypto-sha1
 endef
 
 $(eval $(call KernelPackage,crypto-sha1))
+
+define KernelPackage/lib-crc32c
+  SUBMENU:=$(CRYPTO_MENU)
+  TITLE:=CRC32c (Castagnoli, et al) Cyclic Redundancy-Check
+  DEPENDS:=+kmod-crypto-core
+  KCONFIG:=CONFIG_CRYPTO CONFIG_CRYPTO_CRC32C CONFIG_LIBCRC32C
+  FILES:=$(LINUX_DIR)/lib/libcrc32c.$(LINUX_KMOD_SUFFIX) \
+  	$(LINUX_DIR)/crypto/crc32c.$(LINUX_KMOD_SUFFIX)
+  AUTOLOAD:=$(call AutoLoad,09,crc32c libcrc32c)
+endef
+
+$(eval $(call KernelPackage,lib-crc32c))
 
 
 define KernelPackage/crypto-misc

@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2007 OpenWrt.org
 #
-# $Id: diag.sh 18961 2009-12-29 13:42:41Z agb $
+# $Id: diag.sh 9069 2007-09-29 14:27:54Z juhosg $
 #
 
 . /lib/adm5120.sh

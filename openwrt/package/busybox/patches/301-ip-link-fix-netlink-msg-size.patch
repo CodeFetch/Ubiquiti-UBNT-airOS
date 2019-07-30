@@ -1,0 +1,19 @@
+--- a/networking/libiproute/iplink.c
++++ b/networking/libiproute/iplink.c
+@@ -466,15 +466,15 @@ static int do_add_or_delete(char **argv,
+ 			dev_str = *argv;
+ 			dbg("dev_str:'%s'", dev_str);
+ 		}
+ 		argv++;
+ 	}
+ 	xrtnl_open(&rth);
+ 	ll_init_map(&rth);
+-	if (type_str) {
++	if (type_str && rtm == RTM_NEWLINK) {
+ 		struct rtattr *linkinfo = NLMSG_TAIL(&req.n);
+ 
+ 		addattr_l(&req.n, sizeof(req), IFLA_LINKINFO, NULL, 0);
+ 		addattr_l(&req.n, sizeof(req), IFLA_INFO_KIND, type_str,
+ 				strlen(type_str));
+ 
+ 		if (*argv) {

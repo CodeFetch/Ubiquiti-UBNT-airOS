@@ -1,5 +1,5 @@
 /*
- *  $Id: zynos.h 18961 2009-12-29 13:42:41Z agb $
+ *  $Id: zynos.h 11550 2008-06-22 05:41:37Z juhosg $
  *
  *  Copyright (C) 2007-2008 OpenWrt.org
  *  Copyright (C) 2007-2008 Gabor Juhos <juhosg at openwrt.org>

@@ -19,7 +19,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  *
- * $Id: diag.c 18961 2009-12-29 13:42:41Z agb $
+ * $Id: diag.c 16435 2009-06-13 15:57:49Z florian $
  */
 #include <linux/module.h>
 #include <linux/pci.h>

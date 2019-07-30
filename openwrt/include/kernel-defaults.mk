@@ -35,7 +35,7 @@ endif
 Kernel/Patch:=$(Kernel/Patch/Default)
 ifeq ($(strip $(CONFIG_EXTERNAL_KERNEL_TREE)),"")
 define Kernel/Prepare/Default
-	bzcat $(DL_DIR)/$(LINUX_SOURCE) | $(TAR) -C $(KERNEL_BUILD_DIR) $(TAR_OPTIONS)
+	xzcat $(DL_DIR)/$(LINUX_SOURCE) | $(TAR) -C $(KERNEL_BUILD_DIR) $(TAR_OPTIONS)
 	$(Kernel/Patch)
 	touch $(LINUX_DIR)/.quilt_used
 endef
@@ -51,13 +51,32 @@ endif
 
 ifeq ($(KERNEL),2.6)
   ifeq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),y)
-    define Kernel/SetInitramfs
-		mv $(LINUX_DIR)/.config $(LINUX_DIR)/.config.old
-		grep -v INITRAMFS $(LINUX_DIR)/.config.old > $(LINUX_DIR)/.config
-		echo 'CONFIG_INITRAMFS_SOURCE="$(strip $(TARGET_DIR) $(INITRAMFS_EXTRA_FILES))"' >> $(LINUX_DIR)/.config
-		echo 'CONFIG_INITRAMFS_ROOT_UID=$(shell id -u)' >> $(LINUX_DIR)/.config
-		echo 'CONFIG_INITRAMFS_ROOT_GID=$(shell id -g)' >> $(LINUX_DIR)/.config
-    endef
+    ifeq ($(CONFIG_TARGET_davinci_AirFiber),y)
+      define Kernel/SetInitramfs
+	mv $(LINUX_DIR)/.config $(LINUX_DIR)/.config.old
+	grep -vE "INITRAMFS|CONFIG_CMDLINE" $(LINUX_DIR)/.config.old > $(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_SOURCE="$(strip $(TARGET_DIR) $(INITRAMFS_EXTRA_FILES))"' >> $(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_ROOT_UID=$(shell id -u)' >> $(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_ROOT_GID=$(shell id -g)' >> $(LINUX_DIR)/.config
+	echo '# CONFIG_INITRAMFS_COMPRESSION_NONE is not set' >>$(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_COMPRESSION_GZIP=y' >>$(LINUX_DIR)/.config
+	echo 'CONFIG_CMDLINE="console=ttyS2,115200n8 mem=64M"' >> $(LINUX_DIR)/.config
+      endef
+    else
+      define Kernel/SetInitramfs
+	mv $(LINUX_DIR)/.config $(LINUX_DIR)/.config.old
+	grep -vE "INITRAMFS|CONFIG_CMDLINE" $(LINUX_DIR)/.config.old > $(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_SOURCE="$(strip $(TARGET_DIR) $(INITRAMFS_EXTRA_FILES))"' >> $(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_ROOT_UID=$(shell id -u)' >> $(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_ROOT_GID=$(shell id -g)' >> $(LINUX_DIR)/.config
+	echo 'CONFIG_CMDLINE="console=ttyS0,115200 init=/init  mtdparts=ar7240-nor0:256k(u-boot),64k(u-boot-env),1024k(kernel),6528k(rootfs),256k(cfg),64k(EEPROM)"' >> $(LINUX_DIR)/.config
+	echo '# CONFIG_INITRAMFS_COMPRESSION_NONE is not set' >>$(LINUX_DIR)/.config
+	echo '# CONFIG_INITRAMFS_COMPRESSION_GZIP is not set' >>$(LINUX_DIR)/.config
+	echo '# CONFIG_INITRAMFS_COMPRESSION_BZIP2 is not set' >>$(LINUX_DIR)/.config
+	echo 'CONFIG_INITRAMFS_COMPRESSION_LZMA=y' >>$(LINUX_DIR)/.config
+	echo '# CONFIG_INITRAMFS_COMPRESSION_LZO is not set' >>$(LINUX_DIR)/.config
+      endef
+    endif
   else
     define Kernel/SetInitramfs
 		mv $(LINUX_DIR)/.config $(LINUX_DIR)/.config.old
@@ -92,7 +111,6 @@ endef
 OBJCOPY_STRIP = -R .reginfo -R .note -R .comment -R .mdebug -R .note.gnu.build-id
 
 define Kernel/CompileImage/Default
-	$(if $(CONFIG_TARGET_ROOTFS_INITRAMFS),,rm -f $(TARGET_DIR)/init)
 	+$(MAKE) $(KERNEL_MAKEOPTS) $(KERNELNAME)
 	$(KERNEL_CROSS)objcopy -O binary $(OBJCOPY_STRIP) -S $(LINUX_DIR)/vmlinux $(LINUX_KERNEL)
 	$(KERNEL_CROSS)objcopy $(OBJCOPY_STRIP) -S $(LINUX_DIR)/vmlinux $(KERNEL_BUILD_DIR)/vmlinux.elf

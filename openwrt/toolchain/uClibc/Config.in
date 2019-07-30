@@ -16,6 +16,9 @@ choice
 	config UCLIBC_VERSION_0_9_29
 		bool "uClibc 0.9.29"
 
+	config UCLIBC_VERSION_0_9_32
+		bool "uClibc 0.9.32-git"
+
 endchoice
 
 config UCLIBC_EXTRA_VERSION

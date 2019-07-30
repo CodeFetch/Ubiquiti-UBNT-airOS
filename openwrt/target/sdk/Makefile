@@ -4,7 +4,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: Makefile 18961 2009-12-29 13:42:41Z agb $
+# $Id: Makefile 17199 2009-08-09 11:12:58Z florian $
 
 include $(TOPDIR)/rules.mk
 include $(INCLUDE_DIR)/kernel.mk

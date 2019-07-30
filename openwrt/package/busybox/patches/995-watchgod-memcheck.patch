@@ -1,0 +1,78 @@
+--- a/miscutils/watchdog.c
++++ b/miscutils/watchdog.c
+@@ -18,44 +18,56 @@
+ //usage:     "\n	-F	Run in foreground"
+ //usage:     "\n"
+ //usage:     "\nUse 500ms to specify period in milliseconds"
+ 
+ #include "libbb.h"
+ #include "linux/types.h" /* for __u32 */
+ #include "linux/watchdog.h"
++#include <sys/sysinfo.h>
+ 
+ #define OPT_FOREGROUND  (1 << 0)
+ #define OPT_STIMER      (1 << 1)
+ #define OPT_HTIMER      (1 << 2)
+ 
++static unsigned int low_mem = 500; //kB
++
+ static void watchdog_shutdown(int sig UNUSED_PARAM)
+ {
+ 	static const char V = 'V';
+ 
+ 	remove_pidfile(CONFIG_PID_FILE_PATH "/watchdog.pid");
+ 	write(3, &V, 1);  /* Magic, see watchdog-api.txt in kernel */
+ 	if (ENABLE_FEATURE_CLEAN_UP)
+ 		close(3);
+ 	_exit(EXIT_SUCCESS);
+ }
+ 
++static unsigned int watchdog_get_mem(void)
++{
++    struct sysinfo info;
++    if (sysinfo(&info))
++		return low_mem;
++    return info.freeram / 1024;
++}
++
+ int watchdog_main(int argc, char **argv) MAIN_EXTERNALLY_VISIBLE;
+ int watchdog_main(int argc, char **argv)
+ {
+ 	static const struct suffix_mult suffixes[] = {
+ 		{ "ms", 1 },
+ 		{ "", 1000 },
+ 		{ "", 0 }
+ 	};
+ 
+ 	unsigned opts;
+ 	unsigned stimer_duration; /* how often to restart */
+ 	unsigned htimer_duration = 60000; /* reboots after N ms if not restarted */
+ 	char *st_arg;
+ 	char *ht_arg;
++	char oom = 0;
+ 
+ 	opt_complementary = "=1"; /* must have exactly 1 argument */
+ 	opts = getopt32(argv, "Ft:T:", &st_arg, &ht_arg);
+ 
+ 	/* We need to daemonize *before* opening the watchdog as many drivers
+ 	 * will only allow one process at a time to do so.  Since daemonizing
+ 	 * is not perfect (child may run before parent finishes exiting), we
+@@ -101,10 +113,18 @@ int watchdog_main(int argc, char **argv)
+ 	while (1) {
+ 		/*
+ 		 * Make sure we clear the counter before sleeping,
+ 		 * as the counter value is undefined at this point -- PFM
+ 		 */
+ 		write(3, "", 1); /* write zero byte */
+ 		usleep(stimer_duration * 1000L);
++
++		if (watchdog_get_mem() < low_mem) {
++			if (oom) //Two times in a row
++				break; //RAM to low lets HW watchdog kill the system
++			oom = 1;
++		} else {
++			oom = 0;
++		}
+ 	}
+ 	return EXIT_SUCCESS; /* - not reached, but gcc 4.2.1 is too dumb! */
+ }

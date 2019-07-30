@@ -1,0 +1,28 @@
+--- a/networking/brctl.c
++++ b/networking/brctl.c
+@@ -111,14 +111,25 @@ struct __bridge_info {
+ 	uint32_t ageing_time;
+ 	uint32_t gc_interval;
+ 	uint32_t hello_timer_value;
+ 	uint32_t tcn_timer_value;
+ 	uint32_t topology_change_timer_value;
+ 	uint32_t gc_timer_value;
+ };
++
++struct __fdb_entry
++{
++	uint8_t mac_addr[6];
++	uint8_t port_no;
++	uint8_t is_local;
++	uint32_t ageing_timer_value;
++	uint8_t port_hi;
++	uint8_t pad0;
++	uint16_t unused;
++};
+ /* end <linux/if_bridge.h> */
+ 
+ /* FIXME: These 4 funcs are not really clean and could be improved */
+ static ALWAYS_INLINE void bb_strtotimeval(struct timeval *tv,
+ 		const char *time_str)
+ {
+ 	double secs;

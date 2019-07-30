@@ -1,0 +1,74 @@
+--- a/libc/sysdeps/linux/common/epoll.c
++++ b/libc/sysdeps/linux/common/epoll.c
+@@ -20,14 +20,27 @@ int epoll_create(int size)
+ {
+     __set_errno(ENOSYS);
+     return -1;
+ }
+ #endif
+ 
+ /*
++ * epoll_create1()
++ */
++#ifdef __NR_epoll_create1
++_syscall1(int, epoll_create1, int, flags);
++#else
++int epoll_create1(int flags)
++{
++    __set_errno(ENOSYS);
++    return -1;
++}
++#endif
++
++/*
+  * epoll_ctl()
+  */
+ #ifdef __NR_epoll_ctl
+ _syscall4(int,epoll_ctl, int, epfd, int, op, int, fd, struct epoll_event *, event);
+ #else
+ int epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+ {
+--- a/libc/sysdeps/linux/common/sys/epoll.h
++++ b/libc/sysdeps/linux/common/sys/epoll.h
+@@ -18,14 +18,22 @@
+ 
+ #ifndef	_SYS_EPOLL_H
+ #define	_SYS_EPOLL_H	1
+ 
+ #include <stdint.h>
+ #include <sys/types.h>
+ 
++/* Flags to be passed to epoll_create1.  */
++enum
++  {
++    EPOLL_CLOEXEC = 02000000,
++#define EPOLL_CLOEXEC EPOLL_CLOEXEC
++    EPOLL_NONBLOCK = 04000
++#define EPOLL_NONBLOCK EPOLL_NONBLOCK
++  };
+ 
+ enum EPOLL_EVENTS
+   {
+     EPOLLIN = 0x001,
+ #define EPOLLIN EPOLLIN
+     EPOLLPRI = 0x002,
+ #define EPOLLPRI EPOLLPRI
+@@ -77,14 +85,18 @@ __BEGIN_DECLS
+ 
+ /* Creates an epoll instance.  Returns an fd for the new instance.
+    The "size" parameter is a hint specifying the number of file
+    descriptors to be associated with the new instance.  The fd
+    returned by epoll_create() should be closed with close().  */
+ extern int epoll_create (int __size) __THROW;
+ 
++/* Same as epoll_create but with a FLAGS parameter.  The unused SIZE
++   parameter has been dropped.  */
++extern int epoll_create1 (int __flags) __THROW;
++
+ 
+ /* Manipulate an epoll instance "epfd". Returns 0 in case of success,
+    -1 in case of error ( the "errno" variable will contain the
+    specific error code ) The "op" parameter is one of the EPOLL_CTL_*
+    constants defined above. The "fd" parameter is the target of the
+    operation. The "event" parameter describes which events the caller
+    is interested in and any associated user data.  */

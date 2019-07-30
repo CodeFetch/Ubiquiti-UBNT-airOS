@@ -8,12 +8,12 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=dnsmasq
-PKG_VERSION:=2.47
-PKG_RELEASE:=3.3
+PKG_VERSION:=2.66
+PKG_RELEASE:=5
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_URL:=http://thekelleys.org.uk/dnsmasq
-PKG_MD5SUM:=4524081e56d0b935717d493e8e8d3e11
+PKG_MD5SUM:=c5eb8fb88847a5e9bf18db67c74efd47
 
 include $(INCLUDE_DIR)/package.mk
 
@@ -32,10 +32,16 @@ define Package/dnsmasq/conffiles
 /etc/config/dhcp
 endef
 
+
+TARGET_CFLAGS += \
+        -ffunction-sections -fdata-sections \
+        -DNO_IPSET -DNO_AUTH -DNO_DHCP6 -DNO_TFTP -DNO_LARGEFILE -DNO_SCRIPT
+
 define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR) \
 		$(TARGET_CONFIGURE_OPTS) \
-		CFLAGS="$(TARGET_CFLAGS) -DHAVE_ISC_READER=1" \
+		CFLAGS="$(TARGET_CFLAGS)" \
+		LDFLAGS="-Wl,--gc-sections" \
 		BINDIR="/usr/sbin" MANDIR="/usr/man" \
 		AWK="awk" \
 		all

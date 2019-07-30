@@ -15,8 +15,8 @@ PKG_MD5SUM:=fd5c547e9d66ba49bc735ccb8c791f2a
 
 include $(INCLUDE_DIR)/host-build.mk
 
-define Build/Compile
-	$(MAKE) -C $(PKG_BUILD_DIR)
+define Build/Configure
+	$(call Build/Configure/Default,,CFLAGS=-std=gnu89)
 endef
 
 define Build/Install

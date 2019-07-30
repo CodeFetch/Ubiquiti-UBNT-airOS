@@ -32,10 +32,10 @@ ifneq ($(DUMP),)
 		$(if $(KCONFIG),echo "Kernel-Config: $(KCONFIG)";) \
 		$(if $(BUILDONLY),echo "Build-Only: $(BUILDONLY)";) \
 		echo -n "Description: "; \
-		getvar $(call shvar,Package/$(1)/description); \
+		$(SH_FUNC) getvar $(call shvar,Package/$(1)/description); \
 		$(if $(URL),echo;echo "$(URL)";) \
 		echo "@@" ; \
-		$$(if $$(Package/$(1)/config),echo "Config: "; getvar $(call shvar,Package/$(1)/config); echo "@@"; ) \
+		$$(if $$(Package/$(1)/config),echo "Config: "; $(SH_FUNC) getvar $(call shvar,Package/$(1)/config); echo "@@"; ) \
 		$$(if $$(preconfig_$(1)),$$(preconfig_$(1)) echo "")
   endef
 endif

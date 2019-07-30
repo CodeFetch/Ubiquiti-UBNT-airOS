@@ -9,11 +9,12 @@
 curdir:=tools
 
 # subdirectories to descend into
-$(curdir)/builddirs := sed sstrip ipkg-utils genext2fs squashfs mtd-utils lzma mkimage firmware-utils patch-cmdline pkg-config automake $(if $(CONFIG_CCACHE),ccache) bison $(if $(CONFIG_powerpc),dtc) lua quilt autoconf
+$(curdir)/builddirs := sed sstrip ipkg-utils genext2fs lzma squashfs lzma-new squashfs4 mtd-utils mkimage firmware-utils patch-cmdline pkg-config automake $(if $(CONFIG_CCACHE),ccache) bison $(if $(CONFIG_powerpc),dtc) lua quilt autoconf ubnt-mkfwimage
 
 # builddir dependencies
 $(curdir)/automake/compile := $(curdir)/autoconf/install
 $(curdir)/squashfs/compile := $(curdir)/lzma/install
+$(curdir)/squashfs4/compile := $(curdir)/lzma-new/install $(curdir)/squashfs/install
 $(curdir)/quilt/compile := $(curdir)/sed/install
 
 # preparatory work

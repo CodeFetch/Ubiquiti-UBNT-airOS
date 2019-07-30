@@ -4,7 +4,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: hwmon.mk 18961 2009-12-29 13:42:41Z agb $
+# $Id: hwmon.mk 11999 2008-07-29 23:49:16Z blogic $
 
 HWMON_MENU:=Hardware Monitoring Support
 

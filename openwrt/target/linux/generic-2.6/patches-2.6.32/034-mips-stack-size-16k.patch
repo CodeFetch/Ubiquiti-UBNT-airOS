@@ -1,0 +1,13 @@
+Index: linux-2.6.32.71/arch/mips/include/asm/thread_info.h
+===================================================================
+--- linux-2.6.32.71.orig/arch/mips/include/asm/thread_info.h
++++ linux-2.6.32.71/arch/mips/include/asm/thread_info.h
+@@ -64,7 +64,7 @@ register struct thread_info *__current_t
+ 
+ /* thread information allocation */
+ #if defined(CONFIG_PAGE_SIZE_4KB) && defined(CONFIG_32BIT)
+-#define THREAD_SIZE_ORDER (1)
++#define THREAD_SIZE_ORDER (2)
+ #endif
+ #if defined(CONFIG_PAGE_SIZE_4KB) && defined(CONFIG_64BIT)
+ #define THREAD_SIZE_ORDER (2)

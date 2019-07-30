@@ -22,16 +22,22 @@ define Build/Compile
 	$(MAKE) -C $(PKG_BUILD_DIR)/squashfs-tools \
 		LZMAPATH=$(STAGING_DIR_HOST)/lib \
 		mksquashfs-lzma unsquashfs-lzma 
+	$(MAKE) -C $(PKG_BUILD_DIR)/squashfs-tools \
+		mksquashfs unsquashfs
 endef
 
 define Build/Install
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/squashfs-tools/mksquashfs-lzma $(STAGING_DIR_HOST)/bin/
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/squashfs-tools/unsquashfs-lzma $(STAGING_DIR_HOST)/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/squashfs-tools/mksquashfs $(STAGING_DIR_HOST)/bin/
+	$(INSTALL_BIN) $(PKG_BUILD_DIR)/squashfs-tools/unsquashfs $(STAGING_DIR_HOST)/bin/
 endef
 
 define Build/Clean
 	rm -f $(STAGING_DIR_HOST)/bin/mksquashfs-lzma
 	rm -f $(STAGING_DIR_HOST)/bin/unsquashfs-lzma
+	rm -f $(STAGING_DIR_HOST)/bin/mksquashfs
+	rm -f $(STAGING_DIR_HOST)/bin/unsquashfs
 endef
 
 $(eval $(call HostBuild))

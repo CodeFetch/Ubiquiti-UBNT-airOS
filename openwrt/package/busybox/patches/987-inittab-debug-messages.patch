@@ -1,0 +1,18 @@
+--- a/init/init.c
++++ b/init/init.c
+@@ -453,14 +453,15 @@ static void init_exec(const char *comman
+ }
+ 
+ /* Used only by run_actions */
+ static pid_t run(const struct init_action *a)
+ {
+ 	pid_t pid;
+ 
++	message(L_LOG, "Run: %s\n", a->command);
+ 	/* Careful: don't be affected by a signal in vforked child */
+ 	sigprocmask_allsigs(SIG_BLOCK);
+ 	if (BB_MMU && (a->action_type & ASKFIRST))
+ 		pid = fork();
+ 	else
+ 		pid = vfork();
+ 	if (pid < 0)

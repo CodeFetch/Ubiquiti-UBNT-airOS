@@ -4,7 +4,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: rules.mk 18961 2009-12-29 13:42:41Z agb $
+# $Id: rules.mk 13893 2009-01-06 15:57:00Z nbd $
 
 ifneq ($(__rules_inc),1)
 __rules_inc=1
@@ -12,12 +12,11 @@ __rules_inc=1
 ifeq ($(DUMP),)
   -include $(TOPDIR)/.config
 endif
+include $(TOPDIR)/include/ubnt.mk
 include $(TOPDIR)/include/debug.mk
 include $(TOPDIR)/include/verbose.mk
 
 TMP_DIR:=$(TOPDIR)/tmp
-
-export SHELL=/usr/bin/env bash -c '. $(TOPDIR)/include/shell.sh; eval "$$2"' --
 
 define qstrip
 $(strip $(subst ",,$(1)))
@@ -37,6 +36,7 @@ TARGET_OPTIMIZATION:=$(call qstrip,$(CONFIG_TARGET_OPTIMIZATION))
 BUILD_SUFFIX:=$(call qstrip,$(CONFIG_BUILD_SUFFIX))
 GCCV:=$(call qstrip,$(CONFIG_GCC_VERSION))
 SUBDIR:=$(patsubst $(TOPDIR)/%,%,${CURDIR})
+export SHELL:=/usr/bin/env bash
 
 OPTIMIZE_FOR_CPU=$(ARCH)
 
@@ -87,6 +87,7 @@ endif
 export PATH:=$(TARGET_PATH)
 export STAGING_DIR
 export GCC_HONOUR_COPTS:=0
+export SH_FUNC:=. $(INCLUDE_DIR)/shell.sh;
 
 PKG_CONFIG:=$(STAGING_DIR_HOST)/bin/pkg-config
 
@@ -172,5 +173,10 @@ ext=$(word $(words $(subst ., ,$(1))),$(subst ., ,$(1)))
 all:
 FORCE: ;
 .PHONY: FORCE
+
+print-%:
+	@echo "Variable: $(subst print-,,$@)"
+	@echo "Origin:   $(origin $(subst print-,,$@))"
+	@echo -n  "Value:    " ; if [ "$(origin $(subst print-,,$@))" != "undefined" ] ; then echo $($(subst print-,,$@)) ; else  echo "undefined" ; fi
 
 endif #__rules_inc

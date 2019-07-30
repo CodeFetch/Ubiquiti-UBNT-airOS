@@ -1,0 +1,100 @@
+--- a/ldso/include/ldso.h
++++ b/ldso/include/ldso.h
+@@ -23,14 +23,16 @@
+ #ifndef __LINUX_COMPILER_H
+ #define __LINUX_COMPILER_H
+ #endif
+ 
+ /* Pull in compiler and arch stuff */
+ #include <stdlib.h>
+ #include <stdarg.h>
++#define _FCNTL_H
++#include <bits/fcntl.h>
+ #include <bits/wordsize.h>
+ /* Pull in the arch specific type information */
+ #include <sys/types.h>
+ /* Pull in the arch specific page size */
+ #include <bits/uClibc_page.h>
+ /* Pull in the ldso syscalls and string functions */
+ #include <dl-syscall.h>
+--- a/libc/sysdeps/linux/common/bits/socket.h
++++ b/libc/sysdeps/linux/common/bits/socket.h
+@@ -49,18 +49,28 @@ enum __socket_type
+   SOCK_RAW = 3,			/* Raw protocol interface.  */
+ #define SOCK_RAW SOCK_RAW
+   SOCK_RDM = 4,			/* Reliably-delivered messages.  */
+ #define SOCK_RDM SOCK_RDM
+   SOCK_SEQPACKET = 5,		/* Sequenced, reliable, connection-based,
+ 				   datagrams of fixed maximum length.  */
+ #define SOCK_SEQPACKET SOCK_SEQPACKET
+-  SOCK_PACKET = 10		/* Linux specific way of getting packets
++  SOCK_PACKET = 10,		/* Linux specific way of getting packets
+ 				   at the dev level.  For writing rarp and
+ 				   other similar things on the user level. */
+ #define SOCK_PACKET SOCK_PACKET
++
++  /* Flags to be ORed into the type parameter of socket and socketpair and
++     used for the flags parameter of paccept.  */
++
++  SOCK_CLOEXEC = 02000000,	/* Atomically set close-on-exec flag for the
++				   new descriptor(s).  */
++#define SOCK_CLOEXEC SOCK_CLOEXEC
++  SOCK_NONBLOCK = 04000		/* Atomically mark descriptor(s) as
++				   non-blocking.  */
++#define SOCK_NONBLOCK SOCK_NONBLOCK
+ };
+ 
+ /* Protocol families.  */
+ #define	PF_UNSPEC	0	/* Unspecified.  */
+ #define	PF_LOCAL	1	/* Local to host (pipes and file-domain).  */
+ #define	PF_UNIX		PF_LOCAL /* Old BSD name for PF_LOCAL.  */
+ #define	PF_FILE		PF_LOCAL /* Another non-standard name for PF_LOCAL.  */
+--- a/libc/sysdeps/linux/mips/bits/fcntl.h
++++ b/libc/sysdeps/linux/mips/bits/fcntl.h
+@@ -47,14 +47,15 @@
+ #define O_ASYNC		 0x1000
+ 
+ #ifdef __USE_GNU
+ # define O_NOFOLLOW	0x20000	/* Do not follow links.	 */
+ # define O_DIRECT	0x8000	/* Direct disk access hint.  */
+ # define O_DIRECTORY	0x10000	/* Must be a directory.	 */
+ # define O_NOATIME	0x40000	/* Do not set atime.  */
++# define O_CLOEXEC      02000000 /* set close_on_exec */
+ #endif
+ 
+ /* For now Linux has no synchronisity options for data and read operations.
+    We define the symbols here but let them do the same as O_SYNC since
+    this is a superset.	*/
+ #if defined __USE_POSIX199309 || defined __USE_UNIX98
+ # define O_DSYNC	O_SYNC	/* Synchronize data.  */
+--- a/libc/sysdeps/linux/mips/bits/socket.h
++++ b/libc/sysdeps/linux/mips/bits/socket.h
+@@ -50,18 +50,27 @@ enum __socket_type
+   SOCK_RAW = 3,			/* Raw protocol interface.  */
+ #define SOCK_RAW SOCK_RAW
+   SOCK_RDM = 4,			/* Reliably-delivered messages.  */
+ #define SOCK_RDM SOCK_RDM
+   SOCK_SEQPACKET = 5,		/* Sequenced, reliable, connection-based,
+ 				   datagrams of fixed maximum length.  */
+ #define SOCK_SEQPACKET SOCK_SEQPACKET
+-  SOCK_PACKET = 10		/* Linux specific way of getting packets
++  SOCK_PACKET = 10,		/* Linux specific way of getting packets
+ 				   at the dev level.  For writing rarp and
+ 				   other similar things on the user level. */
+ #define SOCK_PACKET SOCK_PACKET
++  /* Flags to be ORed into the type parameter of socket and socketpair and
++     used for the flags parameter of paccept.  */
++
++  SOCK_CLOEXEC = 02000000,	/* Atomically set close-on-exec flag for the
++                                   new descriptor(s).  */
++#define SOCK_CLOEXEC SOCK_CLOEXEC
++  SOCK_NONBLOCK = 0200		/* Atomically mark descriptor(s) as
++				   non-blocking.  */
++#define SOCK_NONBLOCK SOCK_NONBLOCK
+ };
+ 
+ /* Protocol families.  */
+ #define	PF_UNSPEC	0	/* Unspecified.  */
+ #define	PF_LOCAL	1	/* Local to host (pipes and file-domain).  */
+ #define	PF_UNIX		PF_LOCAL /* Old BSD name for PF_LOCAL.  */
+ #define	PF_FILE		PF_LOCAL /* Another non-standard name for PF_LOCAL.  */

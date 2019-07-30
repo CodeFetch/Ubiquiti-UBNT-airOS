@@ -230,10 +230,8 @@ define KernelPackage/ipv6
   KCONFIG:= \
 	CONFIG_IPV6 \
 	CONFIG_IPV6_PRIVACY=y \
-	CONFIG_IPV6_MULTIPLE_TABLES=y \
 	CONFIG_IPV6_MROUTE=y \
-	CONFIG_IPV6_PIMSM_V2=n \
-	CONFIG_IPV6_SUBTREES=y
+	CONFIG_IPV6_PIMSM_V2=n
   FILES:=$(LINUX_DIR)/net/ipv6/ipv6.$(LINUX_KMOD_SUFFIX)
   AUTOLOAD:=$(call AutoLoad,20,ipv6)
 endef
@@ -316,7 +314,8 @@ define KernelPackage/ppp
 	CONFIG_PPP \
 	CONFIG_PPP_ASYNC \
 	CONFIG_SLHC \
-	CONFIG_CRC_CCITT
+	CONFIG_CRC_CCITT \
+	CONFIG_PPP_FILTER=y
   FILES:= \
 	$(LINUX_DIR)/drivers/net/ppp_async.$(LINUX_KMOD_SUFFIX) \
 	$(LINUX_DIR)/drivers/net/ppp_generic.$(LINUX_KMOD_SUFFIX) \
@@ -367,6 +366,7 @@ define KernelPackage/pppoe
   FILES:= \
 	$(LINUX_DIR)/drivers/net/pppoe.$(LINUX_KMOD_SUFFIX) \
 	$(LINUX_DIR)/drivers/net/pppox.$(LINUX_KMOD_SUFFIX)
+  AUTOLOAD:=$(call AutoLoad,31,pppox pppoe)
 endef
 
 define KernelPackage/pppoe/description
@@ -806,3 +806,66 @@ define KernelPackage/ssb-gige/description
  Kernel modules for Broadcom SSB Gigabit Ethernet adapters.
 endef
 $(eval $(call KernelPackage,ssb-gige))
+
+define KernelPackage/netconsole
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  TITLE:=Netconsole
+  KCONFIG:=CONFIG_NETCONSOLE
+  FILES:=$(LINUX_DIR)/drivers/net/netconsole.$(LINUX_KMOD_SUFFIX)
+endef
+
+define KernelPackage/netconsole/description
+ This module logs kernel printk messages over UDP allowing debugging of
+ problem where disk logging fails and serial consoles are impractical.
+endef
+
+$(eval $(call KernelPackage,netconsole))
+
+
+define KernelPackage/phylib
+  TITLE:=PHY Device support and infrastructure
+  FILES:=$(LINUX_DIR)/drivers/net/phy/libphy.$(LINUX_KMOD_SUFFIX)
+  KCONFIG:=CONFIG_PHYLIB
+  DEPENDS:=@LINUX_2_6
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  AUTOLOAD:=$(call AutoLoad,11,libphy)
+endef
+
+define KernelPackage/phylib/description
+  Ethernet controllers are usually attached to PHY
+  devices.  This option provides infrastructure for
+  managing PHY devices.
+endef
+$(eval $(call KernelPackage,phylib))
+
+define KernelPackage/swconfig
+  TITLE:=Switch configuration API
+  FILES:=$(LINUX_DIR)/drivers/net/phy/swconfig.$(LINUX_KMOD_SUFFIX)
+  KCONFIG:=CONFIG_SWCONFIG
+  DEPENDS:=@LINUX_2_6
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  AUTOLOAD:=$(call AutoLoad,11,swconfig)
+endef
+
+define KernelPackage/swconfig/description
+  Switch configuration API using netlink. This allows
+  you to configure the VLAN features of certain switches.
+endef
+$(eval $(call KernelPackage,swconfig))
+
+define KernelPackage/mdio_bitbang
+  TITLE:=upport for GPIO lib-based bitbanged MDIO buses
+  FILES:=$(LINUX_DIR)/drivers/net/phy/mdio-bitbang.$(LINUX_KMOD_SUFFIX)
+  KCONFIG:=CONFIG_MDIO_BITBANG
+  DEPENDS:=@LINUX_2_6
+  SUBMENU:=$(NETWORK_DEVICES_MENU)
+  AUTOLOAD:=$(call AutoLoad,12,mdio-bitbang)
+endef
+
+define KernelPackage/mdio_bitbang/description
+  This module implements the MDIO bus protocol in software,
+  for use by low level drivers that export the ability to
+  drive the relevant pins.
+endef
+$(eval $(call KernelPackage,mdio_bitbang))
+

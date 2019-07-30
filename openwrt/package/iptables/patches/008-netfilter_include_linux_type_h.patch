@@ -1,0 +1,14 @@
+--- a/include/linux/netfilter.h
++++ b/include/linux/netfilter.h
+@@ -1,10 +1,11 @@
+ #ifndef __LINUX_NETFILTER_H
+ #define __LINUX_NETFILTER_H
+ 
++#include <linux/types.h>
+ 
+ /* Responses from hook functions. */
+ #define NF_DROP 0
+ #define NF_ACCEPT 1
+ #define NF_STOLEN 2
+ #define NF_QUEUE 3
+ #define NF_REPEAT 4

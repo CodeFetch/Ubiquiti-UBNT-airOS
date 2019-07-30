@@ -1,0 +1,19 @@
+--- a/coreutils/id.c
++++ b/coreutils/id.c
+@@ -61,15 +61,15 @@
+ 
+ #include "libbb.h"
+ 
+ /* This is a NOEXEC applet. Be very careful! */
+ 
+ #if !ENABLE_USE_BB_PWD_GRP
+ #if defined(__UCLIBC__) && UCLIBC_VERSION < KERNEL_VERSION(0, 9, 30)
+-#error "Sorry, you need at least uClibc version 0.9.30 for id applet to build"
++#define getgrouplist(username, rgid, groups, n) 0
+ #endif
+ #endif
+ 
+ enum {
+ 	PRINT_REAL      = (1 << 0),
+ 	NAME_NOT_NUMBER = (1 << 1),
+ 	JUST_USER       = (1 << 2),

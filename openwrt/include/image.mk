@@ -25,6 +25,8 @@ endif
 
 JFFS2_BLOCKSIZE ?= 64k 128k
 
+PROFILE_LC:=$(shell tr '[:upper:]' '[:lower:]' <<< $(PROFILE))
+
 define add_jffs2_mark
 	echo -ne '\xde\xad\xc0\xde' >> $(1)
 endef
@@ -53,27 +55,35 @@ ifneq ($(CONFIG_TARGET_ROOTFS_INITRAMFS),y)
   endif
 
   ifeq ($(CONFIG_TARGET_ROOTFS_SQUASHFS),y)
+    ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.29)),1)
+    define Image/mkfs/squashfs
+		@mkdir -p $(TARGET_DIR)/jffs
+		$(STAGING_DIR_HOST)/bin/mksquashfs4 $(TARGET_DIR) $(KDIR)/root.squashfs -nopad -noappend -root-owned -comp lzma -processors 1
+		$(call Image/Build,squashfs)
+    endef
+    else
     define Image/mkfs/squashfs
 		@mkdir -p $(TARGET_DIR)/jffs
 		$(STAGING_DIR_HOST)/bin/mksquashfs-lzma $(TARGET_DIR) $(KDIR)/root.squashfs -nopad -noappend -root-owned $(SQUASHFS_OPTS)
 		$(call Image/Build,squashfs)
     endef
+    endif
   endif
 
   ifeq ($(CONFIG_TARGET_ROOTFS_TGZ),y)
     define Image/mkfs/tgz
-		$(TAR) -zcf $(BIN_DIR)/openwrt-$(BOARD)-rootfs.tgz --numeric-owner --owner=0 --group=0 -C $(TARGET_DIR)/ .
+		$(TAR) -zcf $(BIN_DIR)/$(PROFILE_LC)-rootfs.tgz --numeric-owner --owner=0 --group=0 -C $(TARGET_DIR)/ .
     endef
   endif
 
   ifeq ($(CONFIG_TARGET_ROOTFS_CPIOGZ),y)
     define Image/mkfs/cpiogz
-		( cd $(TARGET_DIR); find . | cpio -o -H newc | gzip -9 >$(BIN_DIR)/openwrt-$(BOARD)-rootfs.cpio.gz )
+		( cd $(TARGET_DIR); find . | cpio -o -H newc | gzip -9 >$(BIN_DIR)/$(PROFILE_LC)-rootfs.cpio.gz )
     endef
   endif
 else
   define Image/BuildKernel
-	cp $(KDIR)/vmlinux.elf $(BIN_DIR)/openwrt-$(BOARD)-vmlinux.elf
+	cp $(KDIR)/vmlinux.elf $(BIN_DIR)/$(PROFILE_LC)-vmlinux.elf
 	$(call Image/Build/Initramfs)
   endef
 endif
@@ -103,11 +113,11 @@ endif
 
 
 define Image/mkfs/prepare/default
-	- find $(TARGET_DIR) -type f -not -perm +0100 -not -name 'ssh_host*' | $(XARGS) chmod 0644
-	- find $(TARGET_DIR) -type f -perm +0100 | $(XARGS) chmod 0755
+	- find $(TARGET_DIR) -type f -not -perm /0100 -not -name 'ssh_host*' | $(XARGS) chmod 0644
+	- find $(TARGET_DIR) -type f -perm /0100 -not -name '*.cgi' | $(XARGS) chmod 0755
 	- find $(TARGET_DIR) -type d | $(XARGS) chmod 0755
-	$(INSTALL_DIR) $(TARGET_DIR)/tmp
-	chmod 0777 $(TARGET_DIR)/tmp
+	# $(INSTALL_DIR) $(TARGET_DIR)/tmp
+	# chmod 0777 $(TARGET_DIR)/tmp
 endef
 
 define Image/mkfs/prepare

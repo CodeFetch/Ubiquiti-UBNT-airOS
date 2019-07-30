@@ -1,0 +1,35 @@
+--- a/scripts/trylink
++++ b/scripts/trylink
+@@ -42,30 +42,30 @@ try() {
+     printf "%s\n" "==========" >>$EXE.out
+     $debug && echo "Trying: $*"
+     $@ >>$EXE.out 2>&1
+     return $?
+ }
+ 
+ check_cc() {
+-    local tempname="$(mktemp)"
++    local tempname="$(mktemp /tmp/tmp.XXXXXXXXXX)"
+     local r
+     echo "int main(int argc,char**argv){return argv?argc:0;}" >"$tempname".c
+     # Can use "-o /dev/null", but older gcc tend to *unlink it* on failure! :(
+     # Was using "-xc /dev/null", but we need a valid C program.
+     # "eval" may be needed if CFLAGS can contain
+     # '... -D"BB_VER=KBUILD_STR(1.N.M)" ...'
+     # and we need shell to process quotes!
+     $CC $CFLAGS $1 "$tempname".c -o "$tempname" >/dev/null 2>&1
+     r=$?
+     rm -f "$tempname" "$tempname".c "$tempname".o
+     return $r
+ }
+ 
+ check_libc_is_glibc() {
+-    local tempname="$(mktemp)"
++    local tempname="$(mktemp /tmp/tmp.XXXXXXXXXX)"
+     local r
+     echo "\
+ 	#include <stdlib.h>
+ 	/* Apparently uclibc defines __GLIBC__ (compat trick?). Oh well. */
+ 	#if defined(__GLIBC__) && !defined(__UCLIBC__)
+ 	syntax error here
+ 	#endif

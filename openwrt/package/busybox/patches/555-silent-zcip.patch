@@ -1,0 +1,18 @@
+--- a/networking/zcip.c
++++ b/networking/zcip.c
+@@ -313,15 +313,14 @@ int zcip_main(int argc UNUSED_PARAM, cha
+ 	//  - link already has local address... just defend/update
+ 
+ 	// Daemonize now; don't delay system startup
+ 	if (!FOREGROUND) {
+ #if BB_MMU
+ 		bb_daemonize(0 /*was: DAEMON_CHDIR_ROOT*/);
+ #endif
+-		bb_info_msg("start, interface %s", argv_intf);
+ 	}
+ 
+ 	// Run the dynamic address negotiation protocol,
+ 	// restarting after address conflicts:
+ 	//  - start with some address we want to try
+ 	//  - short random delay
+ 	//  - arp probes to see if another host uses it

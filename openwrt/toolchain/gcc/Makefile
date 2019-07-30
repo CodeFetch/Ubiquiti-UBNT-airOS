@@ -65,6 +65,7 @@ define Stage1/Configure
 	mkdir -p $(BUILD_DIR1)
 	(cd $(BUILD_DIR1); rm -f config.cache; \
 		SHELL="$(BASH)" \
+		CFLAGS="-std=gnu89" \
 		$(PKG_BUILD_DIR)/configure \
 		--prefix=$(TOOLCHAIN_DIR) \
 		--build=$(GNU_HOST_NAME) \
@@ -101,6 +102,7 @@ define Stage2/Configure
 	ln -sf ../lib $(TOOLCHAIN_DIR)/$(REAL_GNU_TARGET_NAME)/lib
 	(cd $(BUILD_DIR2); rm -f config.cache; \
 		SHELL="$(BASH)" \
+		CFLAGS="-std=gnu89" \
 		$(PKG_BUILD_DIR)/configure \
 		--prefix=$(TOOLCHAIN_DIR) \
 		--build=$(GNU_HOST_NAME) \

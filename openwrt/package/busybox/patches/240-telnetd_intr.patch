@@ -1,0 +1,18 @@
+--- a/networking/telnetd.c
++++ b/networking/telnetd.c
+@@ -327,14 +327,15 @@ make_new_session(
+ 	}
+ 
+ 	/* Child */
+ 	/* Careful - we are after vfork! */
+ 
+ 	/* Restore default signal handling ASAP */
+ 	bb_signals((1 << SIGCHLD) + (1 << SIGPIPE), SIG_DFL);
++	signal(SIGINT, SIG_DFL);
+ 
+ 	pid = getpid();
+ 
+ 	if (ENABLE_FEATURE_UTMP) {
+ 		len_and_sockaddr *lsa = get_peer_lsa(sock);
+ 		char *hostname = NULL;
+ 		if (lsa) {

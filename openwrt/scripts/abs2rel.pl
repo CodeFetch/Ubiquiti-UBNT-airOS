@@ -5,7 +5,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: abs2rel.pl 18961 2009-12-29 13:42:41Z agb $
+# $Id: abs2rel.pl 12674 2008-09-23 18:29:44Z nbd $
 
 use strict;
 require File::Spec;

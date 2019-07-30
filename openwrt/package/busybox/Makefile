@@ -4,18 +4,18 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: Makefile 18961 2009-12-29 13:42:41Z agb $
+# $Id: Makefile 18529 2009-11-24 22:17:35Z florian $
 
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=busybox
-PKG_VERSION:=1.11.2
+PKG_VERSION:=1.24.2
 PKG_RELEASE:=2.2
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.bz2
 PKG_SOURCE_URL:=http://www.busybox.net/downloads \
 		http://distfiles.gentoo.org/distfiles/
-PKG_MD5SUM:=63f11148e09fe9844fa726061414e9ac
+PKG_MD5SUM:=2eaae519cac1143bcf583636a745381f
 
 include $(INCLUDE_DIR)/package.mk
 

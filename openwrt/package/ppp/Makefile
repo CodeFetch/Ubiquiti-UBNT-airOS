@@ -1,4 +1,4 @@
-# 
+#
 # Copyright (C) 2006-2009 OpenWrt.org
 #
 # This is free software, licensed under the GNU General Public License v2.
@@ -8,12 +8,8 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=ppp
-PKG_VERSION:=2.4.3
-PKG_RELEASE:=11.2
-
-PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
-PKG_SOURCE_URL:=ftp://ftp.samba.org/pub/ppp/
-PKG_MD5SUM:=848f6c3cafeb6074ffeb293c3af79b7c
+PKG_VERSION:=2.4.4
+PKG_RELEASE:=4
 
 PKG_BUILD_DEPENDS:=libpcap
 
@@ -99,6 +95,11 @@ define Package/pppstats/description
  This package contains an utility to report PPP statistics.
 endef
 
+define Build/Prepare
+	mkdir -p $(PKG_BUILD_DIR)
+	$(CP) src/* $(PKG_BUILD_DIR)
+	find $(PKG_BUILD_DIR) -name ".svn" -exec rm -fr {} \; || echo "Ignoring errors!"
+endef
 
 define Build/Configure
 $(call Build/Configure/Default,, \
@@ -131,17 +132,15 @@ define Package/ppp/install
 	$(INSTALL_BIN) $(PKG_INSTALL_DIR)/usr/sbin/pppd $(1)/usr/sbin/
 	$(INSTALL_DIR) $(1)/lib/network
 	$(INSTALL_BIN) ./files/ppp.sh $(1)/lib/network/
-	$(INSTALL_DIR) $(1)/etc/ppp
-	$(INSTALL_CONF) ./files/etc/ppp/chap-secrets $(1)/etc/ppp/
-	$(INSTALL_DATA) ./files/etc/ppp/filter $(1)/etc/ppp/
-	$(INSTALL_BIN) ./files/etc/ppp/ip-up $(1)/etc/ppp/
-	$(INSTALL_DIR) $(1)/etc/ppp/ip-up.d
-	$(INSTALL_BIN) ./files/etc/ppp/ip-down $(1)/etc/ppp/
-	$(INSTALL_DIR) $(1)/etc/ppp/ip-down.d
-	$(INSTALL_BIN) ./files/etc/ppp/ipv6-up $(1)/etc/ppp/
-	$(INSTALL_BIN) ./files/etc/ppp/ipv6-down $(1)/etc/ppp/
-	$(INSTALL_DATA) ./files/etc/ppp/options $(1)/etc/ppp/
-	ln -sf /tmp/resolv.conf.auto $(1)/etc/ppp/resolv.conf
+	$(INSTALL_DIR) $(1)/usr/etc/ppp
+	$(INSTALL_DIR) $(1)/usr/etc/ppp/ipv6-up.d
+	$(INSTALL_DIR) $(1)/usr/etc/ppp/ipv6-down.d
+	$(INSTALL_BIN) ./files/ip-up $(1)/usr/etc/ppp/
+	$(INSTALL_BIN) ./files/ip-down $(1)/usr/etc/ppp/
+	$(INSTALL_BIN) ./files/ipv6-up $(1)/usr/etc/ppp/
+	$(INSTALL_BIN) ./files/ipv6-down $(1)/usr/etc/ppp/
+	$(INSTALL_BIN) ./files/ipv6-up.d/01-defaultroute $(1)/usr/etc/ppp/ipv6-up.d/
+	$(INSTALL_BIN) ./files/ipv6-down.d/01-defaultroute $(1)/usr/etc/ppp/ipv6-down.d/
 endef
 	
 define Package/ppp-mod-pppoa/install

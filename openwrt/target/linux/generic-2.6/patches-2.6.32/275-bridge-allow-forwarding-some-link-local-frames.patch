@@ -1,0 +1,138 @@
+Index: linux-2.6.32.68/net/bridge/br_input.c
+===================================================================
+--- linux-2.6.32.68.orig/net/bridge/br_input.c
++++ linux-2.6.32.68/net/bridge/br_input.c
+@@ -136,14 +136,37 @@ struct sk_buff *br_handle_frame(struct n
+ 		return NULL;
+ 
+ 	if (unlikely(is_link_local(dest))) {
+-		/* Pause frames shouldn't be passed up by driver anyway */
+-		if (skb->protocol == htons(ETH_P_PAUSE))
++		/*
++		 * See IEEE 802.1D Table 7-10 Reserved addresses
++		 *
++		 * Assignment		 		Value
++		 * Bridge Group Address		01-80-C2-00-00-00
++		 * (MAC Control) 802.3		01-80-C2-00-00-01
++		 * (Link Aggregation) 802.3	01-80-C2-00-00-02
++		 * 802.1X PAE address		01-80-C2-00-00-03
++		 *
++		 * 802.1AB LLDP 		01-80-C2-00-00-0E
++		 *
++		 * Others reserved for future standardization
++		 */
++		switch (dest[5]) {
++		case 0x00:	/* Bridge Group Address */
++			/* If STP is turned off,
++			   then must forward to keep loop detection */
++			if (p->br->stp_enabled == BR_NO_STP)
++				goto forward;
++			break;
++
++		case 0x01:	/* IEEE MAC (Pause) */
+ 			goto drop;
+ 
+-		/* If STP is turned off, then forward */
+-		if (p->br->stp_enabled == BR_NO_STP && dest[5] == 0)
+-			goto forward;
++		default:
++			/* Allow selective forwarding for most other protocols */
++			if (p->br->group_fwd_mask & (1u << dest[5]))
++				goto forward;
++		}
+ 
++		/* Deliver packet to local host only */
+ 		if (NF_HOOK(PF_BRIDGE, NF_BR_LOCAL_IN, skb, skb->dev,
+ 			    NULL, br_handle_local_finish))
+ 			return NULL;	/* frame consumed by filter */
+Index: linux-2.6.32.68/net/bridge/br_private.h
+===================================================================
+--- linux-2.6.32.68.orig/net/bridge/br_private.h
++++ linux-2.6.32.68/net/bridge/br_private.h
+@@ -27,6 +27,11 @@
+ 
+ #define BR_VERSION	"2.3"
+ 
++/* Control of forwarding link local multicast */
++#define BR_GROUPFWD_DEFAULT	0
++/* Don't allow forwarding control protocols like STP and LLDP */
++#define BR_GROUPFWD_RESTRICTED	0x0007u
++
+ /* Path to usermode spanning tree program */
+ #define BR_STP_PROG	"/sbin/bridge-stp"
+ 
+@@ -102,6 +107,8 @@ struct net_bridge
+ 	unsigned long			flags;
+ #define BR_SET_MAC_ADDR		0x00000001
+ 
++	u16				group_fwd_mask;
++
+ 	/* STP */
+ 	bridge_id			designated_root;
+ 	bridge_id			bridge_id;
+Index: linux-2.6.32.68/net/bridge/br_sysfs_br.c
+===================================================================
+--- linux-2.6.32.68.orig/net/bridge/br_sysfs_br.c
++++ linux-2.6.32.68/net/bridge/br_sysfs_br.c
+@@ -182,6 +182,39 @@ static ssize_t store_stp_state(struct de
+ static DEVICE_ATTR(stp_state, S_IRUGO | S_IWUSR, show_stp_state,
+ 		   store_stp_state);
+ 
++static ssize_t show_group_fwd_mask(struct device *d,
++			      struct device_attribute *attr, char *buf)
++{
++	struct net_bridge *br = to_bridge(d);
++	return sprintf(buf, "%#x\n", br->group_fwd_mask);
++}
++
++
++static ssize_t store_group_fwd_mask(struct device *d,
++			       struct device_attribute *attr, const char *buf,
++			       size_t len)
++{
++	struct net_bridge *br = to_bridge(d);
++	char *endp;
++	unsigned long val;
++
++	if (!capable(CAP_NET_ADMIN))
++		return -EPERM;
++
++	val = simple_strtoul(buf, &endp, 0);
++	if (endp == buf)
++		return -EINVAL;
++
++	if (val & BR_GROUPFWD_RESTRICTED)
++		return -EINVAL;
++
++	br->group_fwd_mask = val;
++
++	return len;
++}
++static DEVICE_ATTR(group_fwd_mask, S_IRUGO | S_IWUSR, show_group_fwd_mask,
++		   store_group_fwd_mask);
++
+ static ssize_t show_priority(struct device *d, struct device_attribute *attr,
+ 			     char *buf)
+ {
+@@ -351,6 +384,7 @@ static struct attribute *bridge_attrs[]
+ 	&dev_attr_max_age.attr,
+ 	&dev_attr_ageing_time.attr,
+ 	&dev_attr_stp_state.attr,
++	&dev_attr_group_fwd_mask.attr,
+ 	&dev_attr_priority.attr,
+ 	&dev_attr_bridge_id.attr,
+ 	&dev_attr_root_id.attr,
+Index: linux-2.6.32.68/net/bridge/br_if.c
+===================================================================
+--- linux-2.6.32.68.orig/net/bridge/br_if.c
++++ linux-2.6.32.68/net/bridge/br_if.c
+@@ -196,7 +196,8 @@ static struct net_device *new_bridge_dev
+ 
+ 	br->feature_mask = dev->features;
+ 	br->stp_enabled = BR_NO_STP;
+-	br->designated_root = br->bridge_id;
++	br->group_fwd_mask = BR_GROUPFWD_DEFAULT;
++	br->designated_root = br->bridge_id;
+ 	br->root_path_cost = 0;
+ 	br->root_port = 0;
+ 	br->bridge_max_age = br->max_age = 20 * HZ;

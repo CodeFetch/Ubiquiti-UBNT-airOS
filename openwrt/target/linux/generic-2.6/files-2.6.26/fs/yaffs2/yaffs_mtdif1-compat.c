@@ -102,7 +102,7 @@ Content-Disposition: attachment;
 /* Don't compile this module if we don't have MTD's mtd_oob_ops interface */
 #if (LINUX_VERSION_CODE > KERNEL_VERSION(2,6,17))
 
-const char *yaffs_mtdif1_c_version = "$Id: yaffs_mtdif1-compat.c 18961 2009-12-29 13:42:41Z agb $";
+const char *yaffs_mtdif1_c_version = "$Id: yaffs_mtdif1-compat.c 11427 2008-06-10 08:20:19Z juhosg $";
 
 #ifndef CONFIG_YAFFS_9BYTE_TAGS
 # define YTAG1_SIZE 8

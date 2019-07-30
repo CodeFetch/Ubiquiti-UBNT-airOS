@@ -1,5 +1,5 @@
 /*
- *  $Id: mkcasfw.c 18961 2009-12-29 13:42:41Z agb $
+ *  $Id: mkcasfw.c 11527 2008-06-17 15:05:53Z juhosg $
  *
  *  Copyright (C) 2007 OpenWrt.org
  *  Copyright (C) 2007 Gabor Juhos <juhosg at openwrt.org>

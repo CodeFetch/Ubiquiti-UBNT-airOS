@@ -10,12 +10,27 @@ NF_MENU:=Netfilter Extensions
 NF_KMOD:=1
 include $(INCLUDE_DIR)/netfilter.mk
 
+define KernelPackage/nf-core
+  SUBMENU:=$(NF_MENU)
+  TITLE:=Netfilter XT core
+  KCONFIG:=$(KCONFIG_NF_CORE)
+  FILES:=$(foreach mod,$(NF_CORE-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
+  AUTOLOAD:=$(call AutoLoad,39,$(notdir $(NF_CORE-m)))
+endef
+
+define KernelPackage/nf-core/description
+ Netfilter core x_tables kernel module which is also required for ebtables in newer kernels.
+endef
+
+$(eval $(call KernelPackage,nf-core))
+
 define KernelPackage/ipt-core
   SUBMENU:=$(NF_MENU)
   TITLE:=Netfilter core
   KCONFIG:=$(KCONFIG_IPT_CORE)
   FILES:=$(foreach mod,$(IPT_CORE-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
   AUTOLOAD:=$(call AutoLoad,40,$(notdir $(IPT_CORE-m)))
+  DEPENDS:=+kmod-nf-core
 endef
 
 define KernelPackage/ipt-core/description
@@ -32,13 +47,30 @@ endef
 $(eval $(call KernelPackage,ipt-core))
 
 
+define KernelPackage/nf-conntrack
+  SUBMENU:=$(NF_MENU)
+  TITLE:=Conntrack core modules
+  KCONFIG:=$(KCONFIG_NF_CONNTRACK)
+  FILES:=$(foreach mod,$(NF_CONNTRACK-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
+  AUTOLOAD:=$(call AutoLoad,40,$(notdir $(NF_CONNTRACK-m)))
+endef
+
+define KernelPackage/nf-conntrack/description
+ Core netfilter kernel modules for connection tracking
+ Includes:
+ - nf_conntrack
+endef
+
+$(eval $(call KernelPackage,nf-conntrack))
+
+
 define KernelPackage/ipt-conntrack
   SUBMENU:=$(NF_MENU)
   TITLE:=Basic connection tracking modules
   KCONFIG:=$(KCONFIG_IPT_CONNTRACK)
   FILES:=$(foreach mod,$(IPT_CONNTRACK-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
   AUTOLOAD:=$(call AutoLoad,41,$(notdir $(IPT_CONNTRACK-m)))
-  DEPENDS:= kmod-ipt-core
+  DEPENDS:= kmod-ipt-core +kmod-nf-conntrack
 endef
 
 define KernelPackage/ipt-conntrack/description
@@ -56,7 +88,7 @@ define KernelPackage/ipt-conntrack-extra
   KCONFIG:=$(KCONFIG_IPT_CONNTRACK_EXTRA)
   FILES:=$(foreach mod,$(IPT_CONNTRACK_EXTRA-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
   AUTOLOAD:=$(call AutoLoad,42,$(notdir $(IPT_CONNTRACK_EXTRA-m)))
-  DEPENDS:= kmod-ipt-core +kmod-ipt-conntrack
+  DEPENDS:= kmod-ipt-core +kmod-ipt-conntrack +kmod-lib-crc32c
 endef
 
 define KernelPackage/ipt-conntrack-extra/description
@@ -357,7 +389,7 @@ $(eval $(call KernelPackage,ipt-extra))
 define KernelPackage/ip6tables
   SUBMENU:=$(NF_MENU)
   TITLE:=IPv6 modules
-  DEPENDS:=+kmod-ipv6
+  DEPENDS:=+kmod-ipv6 +kmod-nf-conntrack
   KCONFIG:=CONFIG_IP6_NF_IPTABLES
   FILES:=$(foreach mod,$(IPT_IPV6-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
   AUTOLOAD:=$(call AutoLoad,49,$(notdir $(IPT_IPV6-m)))
@@ -387,11 +419,11 @@ $(eval $(call KernelPackage,arptables))
 define KernelPackage/ebtables
   SUBMENU:=$(NF_MENU)
   TITLE:=Bridge firewalling modules
-  DEPENDS:=@LINUX_2_6
-  FILES:=$(LINUX_DIR)/net/bridge/netfilter/*.$(LINUX_KMOD_SUFFIX)
+  DEPENDS:=@LINUX_2_6 +kmod-nf-core
+  FILES:=$(foreach mod,$(EBTABLES-m),$(LINUX_DIR)/net/$(mod).$(LINUX_KMOD_SUFFIX))
   KCONFIG:=CONFIG_BRIDGE_NETFILTER=y \
-  	CONFIG_BRIDGE_NF_EBTABLES
-  AUTOLOAD:=$(call AutoLoad,49,$(notdir $(patsubst %.$(LINUX_KMOD_SUFFIX),%,ebtables.$(LINUX_KMOD_SUFFIX) $(wildcard $(LINUX_DIR)/net/bridge/netfilter/ebtable_*.$(LINUX_KMOD_SUFFIX)) $(wildcard $(LINUX_DIR)/net/bridge/netfilter/ebt_*.$(LINUX_KMOD_SUFFIX)))))
+	$(KCONFIG_EBTABLES)
+  AUTOLOAD:=$(call AutoLoad,49,$(notdir $(EBTABLES-m)))
 endef
 
 define KernelPackage/ebtables/description

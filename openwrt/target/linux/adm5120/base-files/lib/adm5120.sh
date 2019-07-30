@@ -2,7 +2,7 @@
 #
 # Copyright (C) 2007 OpenWrt.org
 #
-# $Id: adm5120.sh 18961 2009-12-29 13:42:41Z agb $
+# $Id: adm5120.sh 9069 2007-09-29 14:27:54Z juhosg $
 #
 
 board_name=""

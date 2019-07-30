@@ -1,0 +1,19 @@
+--- a/iwevent.c
++++ b/iwevent.c
+@@ -617,15 +617,15 @@ handle_netlink_events(struct rtnl_handle
+   while(1)
+     {
+       struct sockaddr_nl sanl;
+       socklen_t sanllen = sizeof(struct sockaddr_nl);
+ 
+       struct nlmsghdr *h;
+       int amt;
+-      char buf[8192];
++      char buf[8192] __attribute__((aligned(4)));
+ 
+       amt = recvfrom(rth->fd, buf, sizeof(buf), MSG_DONTWAIT, (struct sockaddr*)&sanl, &sanllen);
+       if(amt < 0)
+ 	{
+ 	  if(errno != EINTR && errno != EAGAIN)
+ 	    {
+ 	      fprintf(stderr, "%s: error reading netlink: %s.\n",

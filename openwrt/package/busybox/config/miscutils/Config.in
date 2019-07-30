@@ -131,6 +131,13 @@ config BUSYBOX_CONFIG_CRONTAB
 	  Note that Busybox binary must be setuid root for this applet to
 	  work properly.
 
+config BUSYBOX_CONFIG_FEATURE_CROND_DIR
+	string "Path to BusyBox crond spool directory"
+	default "/etc"
+	depends on BUSYBOX_CONFIG_CROND || BUSYBOX_CONFIG_CRONTAB
+	help
+	  Location of crond spool.
+
 config BUSYBOX_CONFIG_DC
 	bool "dc"
 	default n

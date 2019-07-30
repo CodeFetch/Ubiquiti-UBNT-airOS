@@ -6,7 +6,7 @@
  *                         D. Hugh Redelmeier
  *                         OpenWrt.org
  *
- * $Id: motorola-bin.c 18961 2009-12-29 13:42:41Z agb $
+ * $Id: motorola-bin.c 12667 2008-09-23 16:12:40Z nbd $
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License

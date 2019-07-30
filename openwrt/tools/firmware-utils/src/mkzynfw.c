@@ -1,5 +1,5 @@
 /*
- *  $Id: mkzynfw.c 18961 2009-12-29 13:42:41Z agb $
+ *  $Id: mkzynfw.c 11559 2008-06-22 19:02:42Z juhosg $
  *
  *  Copyright (C) 2007-2008 OpenWrt.org
  *  Copyright (C) 2007-2008 Gabor Juhos <juhosg at openwrt.org>

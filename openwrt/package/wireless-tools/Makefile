@@ -4,7 +4,7 @@
 # This is free software, licensed under the GNU General Public License v2.
 # See /LICENSE for more information.
 #
-# $Id: Makefile 18961 2009-12-29 13:42:41Z agb $
+# $Id: Makefile 10829 2008-04-14 02:06:35Z nico $
 
 include $(TOPDIR)/rules.mk
 
@@ -79,6 +79,7 @@ define Package/wireless-tools/install
 	ln -sf iwconfig $(1)/usr/sbin/iwlist
 	ln -sf iwconfig $(1)/usr/sbin/iwpriv
 	ln -sf iwconfig $(1)/usr/sbin/iwspy
+	ln -sf iwconfig $(1)/usr/sbin/iwevent
 endef
 
 define Package/libiw/install

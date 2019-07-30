@@ -1,0 +1,34 @@
+--- a/xtables.c
++++ b/xtables.c
+@@ -309,14 +309,15 @@ static char *get_modprobe(void)
+ 	free(ret);
+ 	close(procfile);
+ 	return NULL;
+ }
+ 
+ int xtables_insmod(const char *modname, const char *modprobe, bool quiet)
+ {
++#if 0
+ 	char *buf = NULL;
+ 	char *argv[4];
+ 	int status;
+ 
+ 	/* If they don't explicitly set it, read out of kernel */
+ 	if (!modprobe) {
+ 		buf = get_modprobe();
+@@ -352,14 +353,15 @@ int xtables_insmod(const char *modname,
+ 	default: /* parent */
+ 		wait(&status);
+ 	}
+ 
+ 	free(buf);
+ 	if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+ 		return 0;
++#endif
+ 	return -1;
+ }
+ 
+ int xtables_load_ko(const char *modprobe, bool quiet)
+ {
+ 	static bool loaded = false;
+ 	static int ret = -1;

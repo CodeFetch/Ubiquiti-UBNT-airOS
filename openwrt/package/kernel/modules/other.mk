@@ -661,3 +661,20 @@ define KernelPackage/crypto-dev-ixp4xx/description
 endef
 
 $(eval $(call KernelPackage,crypto-dev-ixp4xx))
+
+define KernelPackage/ar7240-gpio
+  SUBMENU:=$(OTHER_MENU)
+  TITLE:=AR7240 GPIO driver (Ubiquiti)
+  DEPENDS:= @TARGET_ar71xx||TARGET_ar724x||TARGET_ubnt||TARGET_ar934x
+  KCONFIG:=CONFIG_AR7240_GPIO
+  FILES:=$(LINUX_DIR)/drivers/char/ar7240_gpio.$(LINUX_KMOD_SUFFIX)
+  AUTOLOAD:=$(call AutoLoad,10,ar7240_gpio)
+endef
+
+define KernelPackage/ar7240-gpio/description
+ Kernel module for GPIO lines on AR7240 (Ubiquiti)
+endef
+
+$(eval $(call KernelPackage,ar7240-gpio))
+
+

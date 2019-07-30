@@ -13,6 +13,7 @@ ifeq ($(NF_KMOD),1)
 P_V4:=ipv4/netfilter/
 P_V6:=ipv6/netfilter/
 P_XT:=netfilter/
+P_EBT:=bridge/netfilter/
 endif
 
 define nf_add
@@ -22,9 +23,10 @@ endef
 
 
 # core
+$(eval $(if $(NF_KMOD),$(call nf_add,NF_CORE,CONFIG_NETFILTER_XTABLES, $(P_XT)x_tables),))
 
 # kernel only
-$(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_NETFILTER_XTABLES, $(P_XT)x_tables $(P_XT)xt_tcpudp),))
+$(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_NETFILTER_XTABLES, $(P_XT)xt_tcpudp),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_IP_NF_IPTABLES, $(P_V4)ip_tables),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_IP_NF_FILTER, $(P_V4)iptable_filter),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CORE,CONFIG_IP_NF_MANGLE, $(P_V4)iptable_mangle),))
@@ -46,10 +48,13 @@ $(eval $(call nf_add,IPT_CORE,CONFIG_IP_NF_TARGET_REJECT, $(P_V4)ipt_REJECT))
 
 
 # conntrack
+$(eval $(if $(NF_KMOD),$(call nf_add,NF_CONNTRACK,CONFIG_NF_CONNTRACK, $(P_XT)nf_conntrack),))
 
 # kernel only
-$(eval $(if $(NF_KMOD),$(call nf_add,IPT_CONNTRACK,CONFIG_NF_CONNTRACK, $(P_XT)nf_conntrack),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CONNTRACK,CONFIG_IP_NF_CONNTRACK, $(P_V4)ip_conntrack),))
+ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.28)),1)
+$(eval $(if $(NF_KMOD),$(call nf_add,IPT_CONNTRACK,CONFIG_NF_DEFRAG_IPV4, $(P_V4)nf_defrag_ipv4),))
+endif
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_CONNTRACK,CONFIG_NF_CONNTRACK_IPV4, $(P_V4)nf_conntrack_ipv4),))
 
 $(eval $(call nf_add,IPT_CONNTRACK,CONFIG_IP_NF_MATCH_STATE, $(P_V4)ipt_state))
@@ -58,19 +63,19 @@ $(eval $(call nf_add,IPT_CONNTRACK,CONFIG_NETFILTER_XT_MATCH_STATE, $(P_XT)xt_st
 
 # conntrack-extra
 
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_CONNBYTES, $(P_V4)ipt_connbytes))
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_CONNBYTES, $(P_XT)xt_connbytes))
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_CONNMARK, $(P_V4)ipt_connmark))
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_CONNMARK, $(P_XT)xt_connmark))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_CONNBYTES, $(P_V4)ipt_connbytes))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_CONNBYTES, $(P_XT)xt_connbytes))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_CONNMARK, $(P_V4)ipt_connmark))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_CONNMARK, $(P_XT)xt_connmark))
 $(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_CONNTRACK, $(P_V4)ipt_conntrack))
 $(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_CONNTRACK, $(P_XT)xt_conntrack))
 $(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_HELPER, $(P_V4)ipt_helper))
 $(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_HELPER, $(P_XT)xt_helper))
 $(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_MATCH_RECENT, $(P_V4)ipt_recent))
-
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_TARGET_CONNMARK, $(P_V4)ipt_CONNMARK))
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_TARGET_CONNMARK, $(P_XT)xt_CONNMARK))
-$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_TARGET_NOTRACK, $(P_XT)xt_NOTRACK))
+$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_MATCH_RECENT, $(P_XT)xt_recent))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_IP_NF_TARGET_CONNMARK, $(P_V4)ipt_CONNMARK))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_TARGET_CONNMARK, $(P_XT)xt_CONNMARK))
+#$(eval $(call nf_add,IPT_CONNTRACK_EXTRA,CONFIG_NETFILTER_XT_TARGET_NOTRACK, $(P_XT)xt_NOTRACK))
 
 
 # extra
@@ -96,6 +101,7 @@ $(eval $(call nf_add,IPT_EXTRA,CONFIG_NETFILTER_XT_TARGET_CHAOS, $(P_XT)xt_CHAOS
 # filter
 
 $(eval $(call nf_add,IPT_FILTER,CONFIG_IP_NF_MATCH_IPP2P, $(P_V4)ipt_ipp2p))
+$(eval $(call nf_add,IPT_FILTER,CONFIG_NETFILTER_XT_MATCH_IPP2P, $(P_XT)xt_ipp2p))
 $(eval $(call nf_add,IPT_FILTER,CONFIG_IP_NF_MATCH_LAYER7, $(P_V4)ipt_layer7))
 $(eval $(call nf_add,IPT_FILTER,CONFIG_NETFILTER_XT_MATCH_LAYER7, $(P_XT)xt_layer7))
 $(eval $(call nf_add,IPT_FILTER,CONFIG_IP_NF_MATCH_STRING, $(P_V4)ipt_string))
@@ -117,13 +123,12 @@ $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_LENGTH, $(P_V4)ipt_length))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_LENGTH, $(P_XT)xt_length))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_MARK, $(P_V4)ipt_mark))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_MARK, $(P_XT)xt_mark))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_STATISTIC, $(P_XT)xt_statistic))
+#$(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_STATISTIC, $(P_XT)xt_statistic))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_TCPMSS, $(P_V4)ipt_tcpmss))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_TCPMSS, $(P_XT)xt_tcpmss))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_TIME, $(P_V4)ipt_time))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_TIME, $(P_XT)xt_time))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_TTL, $(P_V4)ipt_ttl))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_UNCLEAN, $(P_V4)ipt_unclean))
+#$(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_TIME, $(P_V4)ipt_time))
+#$(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_TIME, $(P_XT)xt_time))
+#$(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_UNCLEAN, $(P_V4)ipt_unclean))
 
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_CLASSIFY, $(P_V4)ipt_CLASSIFY ))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_CLASSIFY, $(P_XT)xt_CLASSIFY))
@@ -131,7 +136,6 @@ $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_DSCP, $(P_V4)ipt_DSCP))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_ECN, $(P_V4)ipt_ECN))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_MARK, $(P_V4)ipt_MARK))
 $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_MARK, $(P_XT)xt_MARK))
-$(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_TTL, $(P_V4)ipt_TTL))
 
 # XXX: tos/TOS extensions have been merged in dscp/DSCP in linux 2.6.25, but not yet in iptables
 ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.25)),1)
@@ -141,6 +145,14 @@ ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.25)),1)
 else
   $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_TOS, $(P_V4)ipt_tos))
   $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_TOS, $(P_V4)ipt_TOS))
+endif
+
+ifeq ($(strip $(call CompareKernelPatchVer,$(KERNEL_PATCHVER),ge,2.6.30)),1)
+  $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_MATCH_HL, $(P_XT)xt_hl))
+  $(eval $(call nf_add,IPT_IPOPT,CONFIG_NETFILTER_XT_TARGET_HL, $(P_XT)xt_HL))
+else
+  $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_MATCH_TTL, $(P_V4)ipt_ttl))
+  $(eval $(call nf_add,IPT_IPOPT,CONFIG_IP_NF_TARGET_TTL, $(P_V4)ipt_TTL))
 endif
 
 
@@ -176,6 +188,8 @@ $(eval $(call nf_add,IPT_IPSET,CONFIG_IP_NF_TARGET_SET, $(P_V4)ipt_SET))
 
 
 # IPv6
+# Look at package/kernel/modules/netfilter.mk - kmod-ip6tables, it's KCONFIG is not variabe, so you won't get similar functionality
+# as with above packages...
 
 # kernel only
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_IPV6,CONFIG_NF_CONNTRACK_IPV6, $(P_V6)nf_conntrack_ipv6),))
@@ -206,6 +220,7 @@ $(eval $(call nf_add,IPT_IPV6,CONFIG_IP6_NF_TARGET_ROUTE, $(P_V6)ip6t_ROUTE))
 # nat
 
 # kernel only
+$(eval $(if $(NF_KMOD),$(call nf_add,IPT_NAT,CONFIG_IP_NF_NAT, $(P_V4)ip_nat),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_NAT,CONFIG_IP_NF_NAT, $(P_V4)iptable_nat),))
 $(eval $(if $(NF_KMOD),$(call nf_add,IPT_NAT,CONFIG_NF_NAT, $(P_V4)nf_nat $(P_V4)iptable_nat),))
 
@@ -229,13 +244,34 @@ $(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_FTP, $(P_V4)ip_conntrack_ftp))
 $(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_NAT_FTP, $(P_V4)ip_nat_ftp))
 $(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_FTP, $(P_XT)nf_conntrack_ftp))
 $(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_FTP, $(P_V4)nf_nat_ftp))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_IRC, $(P_V4)ip_conntrack_irc))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_NAT_IRC, $(P_V4)ip_nat_irc))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_IRC, $(P_XT)nf_conntrack_irc))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_IRC, $(P_V4)nf_nat_irc))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_TFTP, $(P_V4)ip_conntrack_tftp))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_TFTP, $(P_XT)nf_conntrack_tftp))
-$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_TFTP, $(P_V4)nf_nat_tftp))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_CT_PROTO_SCTP, $(P_V4)ip_conntrack_proto_sctp))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CT_PROTO_SCTP, $(P_XT)nf_conntrack_proto_sctp))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_PROTO_SCTP, $(P_V4)nf_nat_proto_sctp))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_PPTP, $(P_V4)ip_conntrack_pptp))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_NAT_PPTP, $(P_V4)ip_nat_pptp))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CT_PROTO_GRE, $(P_XT)nf_conntrack_proto_gre))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_PROTO_GRE, $(P_V4)nf_nat_proto_gre))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_PPTP, $(P_XT)nf_conntrack_pptp))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_PPTP, $(P_V4)nf_nat_pptp))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_SIP, $(P_V4)ip_conntrack_sip))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_NAT_SIP, $(P_V4)ip_nat_sip))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_SIP, $(P_XT)nf_conntrack_sip))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_SIP, $(P_V4)nf_nat_sip))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_RTSP, $(P_V4)ip_conntrack_rtsp))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_NAT_RTSP, $(P_V4)ip_nat_rtsp))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_RTSP, $(P_XT)nf_conntrack_rtsp))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_RTSP, $(P_V4)nf_nat_rtsp))
+
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_H323, $(P_V4)ip_conntrack_h323))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_IP_NF_NAT_H323, $(P_V4)ip_nat_h323))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_CONNTRACK_H323, $(P_XT)nf_conntrack_h323))
+$(eval $(call nf_add,IPT_NATHELPER,CONFIG_NF_NAT_H323, $(P_V4)nf_nat_h323))
 
 
 # nathelper-extra
@@ -279,6 +315,26 @@ $(eval $(call nf_add,IPT_QUEUE,CONFIG_IP_NF_QUEUE, $(P_V4)ip_queue))
 $(eval $(call nf_add,IPT_ULOG,CONFIG_IP_NF_TARGET_ULOG, $(P_V4)ipt_ULOG))
 
 
+#
+# ebtables
+#
+
+$(eval $(if $(NF_KMOD),$(call nf_add,EBTABLES,CONFIG_BRIDGE_NF_EBTABLES, $(P_EBT)ebtables),))
+
+# ebtables: tables
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_BROUTE, $(P_EBT)ebtable_broute))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_T_FILTER, $(P_EBT)ebtable_filter))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_T_NAT, $(P_EBT)ebtable_nat))
+
+# ebtables: matches
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_IP, $(P_EBT)ebt_ip))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_IP6, $(P_EBT)ebt_ip6))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_VLAN, $(P_EBT)ebt_vlan))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_ARPNAT, $(P_EBT)ebt_arpnat))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_MARK, $(P_EBT)ebt_mark_m))
+$(eval $(call nf_add,EBTABLES,CONFIG_BRIDGE_EBT_MARK_T, $(P_EBT)ebt_mark))
+
+
 # userland only
 IPT_BUILTIN += $(IPT_CORE-y) $(IPT_CORE-m)
 IPT_BUILTIN += $(IPT_CONNTRACK-y)
@@ -296,5 +352,6 @@ IPT_BUILTIN += $(IPT_NAT_EXTRA-y)
 IPT_BUILTIN += $(IPT_NATHELPER-y)
 IPT_BUILTIN += $(IPT_NATHELPER_EXTRA-y)
 IPT_BUILTIN += $(IPT_ULOG-y)
+IPT_BUILTIN += $(EBTABLES-y)
 
 endif # __inc_netfilter

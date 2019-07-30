@@ -1,4 +1,4 @@
-# $Id: Makefile 18961 2009-12-29 13:42:41Z agb $
+# $Id: Makefile 10749 2008-04-07 00:24:19Z nbd $
 
 LIBNVRAM_OBJS := nvram.o
 

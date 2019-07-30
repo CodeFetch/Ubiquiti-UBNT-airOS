@@ -1,5 +1,5 @@
 /*
- * $Id: decompress.c 18961 2009-12-29 13:42:41Z agb $
+ * $Id: decompress.c 12662 2008-09-23 14:56:29Z juhosg $
  *
  * LZMA compressed kernel decompressor for ADM5120 boards
  *

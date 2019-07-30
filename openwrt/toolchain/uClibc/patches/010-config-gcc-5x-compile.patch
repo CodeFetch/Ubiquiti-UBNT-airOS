@@ -1,0 +1,14 @@
+Index: uClibc-0.9.29/extra/config/zconf.hash.c_shipped
+===================================================================
+--- uClibc-0.9.29.orig/extra/config/zconf.hash.c_shipped
++++ uClibc-0.9.29/extra/config/zconf.hash.c_shipped
+@@ -159,9 +159,6 @@ static struct kconf_id_strings_t kconf_i
+     "enable"
+   };
+ #define kconf_id_strings ((const char *) &kconf_id_strings_contents)
+-#ifdef __GNUC__
+-__inline
+-#endif
+ struct kconf_id *
+ kconf_id_lookup (register const char *str, register unsigned int len)
+ {

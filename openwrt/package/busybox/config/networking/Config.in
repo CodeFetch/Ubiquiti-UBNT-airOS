@@ -112,6 +112,12 @@ config BUSYBOX_CONFIG_FEATURE_FTPGETPUT_LONG_OPTIONS
 	help
 	  Support long options for the ftpget/ftpput applet.
 
+config BUSYBOX_CONFIG_GARP
+        bool "garp"
+        default n
+        help
+          Send gratuitous ARP
+
 config BUSYBOX_CONFIG_HOSTNAME
 	bool "hostname"
 	default n
@@ -672,6 +678,12 @@ config BUSYBOX_CONFIG_PSCAN
 	help
 	  Simple network port scanner.
 
+config BUSYBOX_CONFIG_PWDOG
+	bool "pwdog"
+	default y
+	help
+	  Ping watchdog - ping to IP address and do reset if ping failed.
+
 config BUSYBOX_CONFIG_ROUTE
 	bool "route"
 	default y
@@ -830,6 +842,13 @@ config BUSYBOX_CONFIG_TRACEROUTE
 	default y
 	help
 	  Utility to trace the route of IP packets
+
+config BUSYBOX_CONFIG_TRACEROUTE6
+	bool "traceroute6"
+	default n
+	depends on BUSYBOX_CONFIG_FEATURE_IPV6 && BUSYBOX_CONFIG_TRACEROUTE
+	help
+	  Utility to trace the route of IPv6 packets.
 
 config BUSYBOX_CONFIG_FEATURE_TRACEROUTE_VERBOSE
 	bool "Enable verbose output"
