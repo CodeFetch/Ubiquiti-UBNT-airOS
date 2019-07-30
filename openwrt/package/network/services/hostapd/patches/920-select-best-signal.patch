@@ -1,0 +1,44 @@
+Index: hostapd-2.1/wpa_supplicant/events.c
+===================================================================
+--- hostapd-2.1.orig/wpa_supplicant/events.c
++++ hostapd-2.1/wpa_supplicant/events.c
+@@ -941,23 +941,32 @@ wpa_supplicant_select_bss(struct wpa_sup
+ 			  struct wpa_ssid **selected_ssid)
+ {
+ 	unsigned int i;
++	int max_level = -1000000; //very very low
++	struct wpa_bss *sel_bss = NULL;
+ 
+ 	wpa_dbg(wpa_s, MSG_DEBUG, "Selecting BSS from priority group %d",
+ 		group->priority);
+ 
+ 	for (i = 0; i < wpa_s->last_scan_res_used; i++) {
+ 		struct wpa_bss *bss = wpa_s->last_scan_res[i];
+-		*selected_ssid = wpa_scan_res_match(wpa_s, i, bss, group);
+-		if (!*selected_ssid)
++		struct wpa_ssid *tmp_ssid  = wpa_scan_res_match(wpa_s, i, bss, group);
++		if (!tmp_ssid)
+ 			continue;
++		if(bss->level > max_level) {
++			max_level = bss->level;
++			sel_bss = bss;
++			*selected_ssid = tmp_ssid;
++		}
++	}
++
++	if(sel_bss) {
+ 		wpa_dbg(wpa_s, MSG_DEBUG, "   selected BSS " MACSTR
+-			" ssid='%s'",
+-			MAC2STR(bss->bssid),
+-			wpa_ssid_txt(bss->ssid, bss->ssid_len));
+-		return bss;
++					" ssid='%s' level=%d",
++					MAC2STR(sel_bss->bssid),
++					wpa_ssid_txt(sel_bss->ssid, sel_bss->ssid_len), sel_bss->level);
+ 	}
+ 
+-	return NULL;
++	return sel_bss;
+ }
+ 
+ 

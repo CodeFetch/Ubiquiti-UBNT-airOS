@@ -1,6 +1,10 @@
 --- a/src/drivers/driver_wext.c
 +++ b/src/drivers/driver_wext.c
-@@ -1188,6 +1188,7 @@ struct wext_scan_data {
+@@ -1184,14 +1184,15 @@ static u8 * wpa_driver_wext_giwscan(stru
+ struct wext_scan_data {
+ 	struct wpa_scan_res res;
+ 	u8 *ie;
+ 	size_t ie_len;
  	u8 ssid[32];
  	size_t ssid_len;
  	int maxrate;
@@ -8,7 +12,15 @@
  };
  
  
-@@ -1404,6 +1405,8 @@ static void wext_get_scan_custom(struct
+ static void wext_get_scan_mode(struct iw_event *iwe,
+ 			       struct wext_scan_data *res)
+ {
+ 	if (iwe->u.mode == IW_MODE_ADHOC)
+@@ -1400,14 +1401,16 @@ static void wext_get_scan_custom(struct
+ 		}
+ 		bytes /= 2;
+ 		if (hexstr2bin(spos, bin, bytes) < 0) {
+ 			wpa_printf(MSG_DEBUG, "WEXT: Invalid TSF value");
  			return;
  		}
  		res->res.tsf += WPA_GET_BE64(bin);
@@ -17,7 +29,15 @@
  	}
  }
  
-@@ -1424,6 +1427,10 @@ static void wpa_driver_wext_add_scan_ent
+ 
+ static int wext_19_iw_point(struct wpa_driver_wext_data *drv, u16 cmd)
+ {
+ 	return drv->we_version_compiled > 18 &&
+@@ -1420,14 +1423,18 @@ static void wpa_driver_wext_add_scan_ent
+ 					   struct wext_scan_data *data)
+ {
+ 	struct wpa_scan_res **tmp;
+ 	struct wpa_scan_res *r;
  	size_t extra_len;
  	u8 *pos, *end, *ssid_ie = NULL, *rate_ie = NULL;
  
@@ -28,3 +48,7 @@
  	/* Figure out whether we need to fake any IEs */
  	pos = data->ie;
  	end = pos + data->ie_len;
+ 	while (pos && pos + 1 < end) {
+ 		if (pos + 2 + pos[1] > end)
+ 			break;
+ 		if (pos[0] == WLAN_EID_SSID)

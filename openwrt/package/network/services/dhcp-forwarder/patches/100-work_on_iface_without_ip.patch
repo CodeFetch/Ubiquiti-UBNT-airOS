@@ -1,0 +1,19 @@
+--- a/src/cfg.c	2012-04-30 13:57:35.000000000 +0300
++++ b/src/cfg.c	2017-09-28 14:15:52.175441475 +0300
+@@ -189,14 +189,14 @@ fillInterfaceInfo(struct InterfaceInfoLi
+     memcpy(iface.ifr_name, ifinfo->name, IFNAMSIZ);
+     if (ioctl(fd, SIOCGIFINDEX,  &iface)==-1) goto err;
+ 
+     if (iface.ifr_ifindex<0)                  goto err;
+     ifinfo->if_idx = (unsigned int)(iface.ifr_ifindex);
+ 
+-    if (ioctl(fd, SIOCGIFADDR,   &iface)==-1) goto err;
+-    ifinfo->if_real_ip = sockaddrToInet4(&iface.ifr_addr);
++    if (ioctl(fd, SIOCGIFADDR,   &iface)==-1) ifinfo->if_real_ip = INADDR_ANY;
++    else ifinfo->if_real_ip = sockaddrToInet4(&iface.ifr_addr);
+ 
+     if (ioctl(fd, SIOCGIFMTU,    &iface)==-1) goto err;
+     ifinfo->if_mtu = static_cast(size_t)(iface.ifr_mtu);
+ 
+     if (!ifinfo->need_mac) ifinfo->if_maclen = 0;
+     else {

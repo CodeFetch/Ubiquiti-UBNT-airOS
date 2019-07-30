@@ -195,7 +195,7 @@ endef
 define Package/wpa-cli
   SECTION:=net
   CATEGORY:=Network
-  DEPENDS:=@PACKAGE_wpa-supplicant||PACKAGE_wpa-supplicant-p2p||PACKAGE_wpad-mini||PACKAGE_wpad
+  DEPENDS:=@PACKAGE_wpa-supplicant||PACKAGE_wpa-supplicant-p2p||PACKAGE_wpad-mini||PACKAGE_wpad +librt
   TITLE:=WPA Supplicant command line interface
 endef
 

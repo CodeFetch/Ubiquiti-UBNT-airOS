@@ -1,0 +1,75 @@
+Index: dnsmasq-2.66/src/option.c
+===================================================================
+--- dnsmasq-2.66.orig/src/option.c
++++ dnsmasq-2.66/src/option.c
+@@ -412,7 +412,7 @@ static struct {
+ #ifdef OPTION6_PREFIX_CLASS 
+   { LOPT_PREF_CLSS, ARG_DUP, "set:tag,<class>", gettext_noop("Specify DHCPv6 prefix class"), NULL },
+ #endif
+-  { LOPT_USE_RESOLV, EXT_OPT_USE_RESOLV,  NULL, gettext_noop("Use real DNS hosts for DHCP instead of local IP."), NULL },
++  { LOPT_USE_RESOLV, OPT_USE_RESOLV,  NULL, gettext_noop("Use real DNS hosts for DHCP instead of local IP."), NULL },
+   { 0, 0, NULL, NULL, NULL }
+ }; 
+ 
+@@ -1294,7 +1294,6 @@ static int one_opt(int option, char *arg
+     if (usage[i].opt == option)
+       {
+ 	 int rept = usage[i].rept;
+-	 
+ 	 if (command_line)
+ 	   {
+ 	     /* command line */
+@@ -1312,14 +1311,10 @@ static int one_opt(int option, char *arg
+ 	       usage[i].rept = ARG_USED_FILE;
+ 	   }
+ 
+-	 if (rept != ARG_DUP && rept != ARG_ONE && rept != ARG_USED_CL) 
+-	   {
+-	     if ((rept & EXT_OPT) && (rept & ~EXT_OPT))
+-		 daemon->ext_options |= (rept & ~EXT_OPT);
+-		 else
+-			 set_option_bool(rept);
+-	     return 1;
+-	   }
++	if (rept != ARG_DUP && rept != ARG_ONE && rept != ARG_USED_CL) {
++		set_option_bool(rept);
++		return 1;
++	}
+        
+ 	 break;
+       }
+Index: dnsmasq-2.66/src/dnsmasq.h
+===================================================================
+--- dnsmasq-2.66.orig/src/dnsmasq.h
++++ dnsmasq-2.66/src/dnsmasq.h
+@@ -221,15 +221,14 @@ struct event_desc {
+ #define OPT_TFTP_LC        38
+ #define OPT_CLEVERBIND     39
+ #define OPT_TFTP           40
+-#define OPT_LAST           41
++#define OPT_USE_RESOLV     41
++#define OPT_LAST           42
+ 
+ /* extra flags for my_syslog, we use a couple of facilities since they are known 
+    not to occupy the same bits as priorities, no matter how syslog.h is set up. */
+ #define MS_TFTP LOG_USER
+ #define MS_DHCP LOG_DAEMON 
+ 
+-#define EXT_OPT_USE_RESOLV     (1u<<4 | 1)  //Start from more than 9 because of overlap with ARG_xxx
+-
+ struct all_addr {
+   union {
+     struct in_addr addr4;
+Index: dnsmasq-2.66/src/rfc2131.c
+===================================================================
+--- dnsmasq-2.66.orig/src/rfc2131.c
++++ dnsmasq-2.66/src/rfc2131.c
+@@ -2260,7 +2260,7 @@ static void do_options(struct dhcp_conte
+       if (daemon->port == NAMESERVER_PORT &&
+ 	  in_list(req_options, OPTION_DNSSERVER) &&
+       !option_find2(OPTION_DNSSERVER)) {
+-        if (daemon->servers && (daemon->ext_options & EXT_OPT_USE_RESOLV))
++        if (daemon->servers && (option_bool(OPT_USE_RESOLV)))
+         {
+             struct server *tmp;
+             int idx = 0;

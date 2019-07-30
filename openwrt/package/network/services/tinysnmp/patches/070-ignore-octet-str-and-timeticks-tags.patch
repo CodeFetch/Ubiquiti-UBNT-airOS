@@ -1,0 +1,66 @@
+--- a/agent/snmp.c
++++ b/agent/snmp.c
+@@ -101,14 +101,46 @@ void snmp_free (snmp_pdu_t *pdu)
+ 		for (i = 0; i < pdu->n; i++)
+ 		  mem_free (pdu->oid[i]);
+ 
+ 		mem_free (pdu->oid);
+ 	 }
+ }
+ 
++static int skip_octetStr_or_ipaddr(ber_t *ber) {
++	uint32_t taglen;
++
++	if (ber->buf[ber->offset] != BER_OCTET_STRING && ber->buf[ber->offset] != BER_TimeTicks)
++		return (-1);
++
++	ber->offset += 1;
++	if (ber->offset >= ber->size)
++		return (-1);
++
++	if (ber->buf[ber->offset] > 127) {
++		uint16_t octets = ber->buf[ber->offset] & 0x7f;
++		int i = 0;
++
++		if (octets < 1 || octets > 4 || ber->size - ber->offset < octets)
++			return (-1);
++
++		for (taglen = i = 0; i < octets; i++)
++			taglen += ber->buf[ber->offset + octets - i] << (i * 8);
++
++		ber->offset += octets + 1;
++
++		if (taglen > INT32_MAX)
++			return (-1);
++	} else {
++		taglen = ber->buf[ber->offset++];
++	}
++
++	ber->offset += taglen;
++	return (0);
++}
++
+ static int decode_varbind_list (snmp_pdu_t *pdu,ber_t *ber)
+ {
+    uint32_t i;
+ 
+    if (ber_decode_sequence (ber))
+ 	 {
+ 		snmp_stats.snmpInASNParseErrs++;
+@@ -116,15 +148,15 @@ static int decode_varbind_list (snmp_pdu
+ 	 }
+ 
+    for (i = 0; ber->offset < ber->size; i++)
+ 	 {
+ 		uint32_t *oid;
+ 		void *ptr;
+ 
+-		if (ber_decode_sequence (ber) || ber_decode_oid (&oid,ber) || ber_decode_null (ber))
++		if (ber_decode_sequence (ber) || ber_decode_oid (&oid,ber) || (ber_decode_null (ber) && skip_octetStr_or_ipaddr (ber)))
+ 		  {
+ 			 snmp_stats.snmpInASNParseErrs++;
+ 			 if (oid != NULL) mem_free (oid);
+ 			 return (-1);
+ 		  }
+ 
+ 		if ((ptr = mem_realloc (pdu->oid,(pdu->n + 1) * sizeof (uint32_t *))) == NULL)

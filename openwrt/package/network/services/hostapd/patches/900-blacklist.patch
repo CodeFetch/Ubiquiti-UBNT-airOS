@@ -1,8 +1,10 @@
-Index: hostapd-2.1/wpa_supplicant/events.c
-===================================================================
---- hostapd-2.1.orig/wpa_supplicant/events.c
-+++ hostapd-2.1/wpa_supplicant/events.c
-@@ -2099,7 +2099,9 @@ static void wpa_supplicant_event_disasso
+--- a/wpa_supplicant/events.c
++++ b/wpa_supplicant/events.c
+@@ -2095,15 +2095,17 @@ static void wpa_supplicant_event_disasso
+ 	}
+ 
+ 	if (could_be_psk_mismatch(wpa_s, reason_code, locally_generated)) {
+ 		wpa_msg(wpa_s, MSG_INFO, "WPA: 4-Way Handshake failed - "
  			"pre-shared key may be incorrect");
  		if (wpas_p2p_4way_hs_failed(wpa_s) > 0)
  			return; /* P2P group removed */
@@ -13,7 +15,15 @@ Index: hostapd-2.1/wpa_supplicant/events.c
  	}
  	if (!wpa_s->disconnected &&
  	    (!wpa_s->auto_reconnect_disabled ||
-@@ -2217,7 +2219,8 @@ wpa_supplicant_event_michael_mic_failure
+ 	     wpa_s->key_mgmt == WPA_KEY_MGMT_WPS)) {
+ 		wpa_dbg(wpa_s, MSG_DEBUG, "Auto connect enabled: try to "
+ 			"reconnect (wps=%d wpa_state=%d)",
+ 			wpa_s->key_mgmt == WPA_KEY_MGMT_WPS,
+@@ -2213,15 +2215,16 @@ wpa_supplicant_event_michael_mic_failure
+ 		 * to start countermeasures and AP better do the same.
+ 		 */
+ 		wpa_sm_key_request(wpa_s->wpa, 1, pairwise);
+ 
  		/* initialize countermeasures */
  		wpa_s->countermeasures = 1;
  
@@ -23,7 +33,15 @@ Index: hostapd-2.1/wpa_supplicant/events.c
  
  		wpa_msg(wpa_s, MSG_WARNING, "TKIP countermeasures started");
  
-@@ -2550,7 +2553,11 @@ static void wpas_event_disconnect(struct
+ 		/*
+ 		 * Need to wait for completion of request frame. We do not get
+ 		 * any callback for the message completion, so just wait a
+ 		 * short while and hope for the best. */
+@@ -2546,15 +2549,19 @@ static void wpas_event_disconnect(struct
+ 	wpa_supplicant_event_disassoc(wpa_s, reason_code, locally_generated);
+ 
+ 	if (((reason_code == WLAN_REASON_IEEE_802_1X_AUTH_FAILED ||
+ 	      ((wpa_key_mgmt_wpa_ieee8021x(wpa_s->key_mgmt) ||
  		(wpa_s->key_mgmt & WPA_KEY_MGMT_IEEE8021X_NO_WPA)) &&
  	       eapol_sm_failed(wpa_s->eapol))) &&
  	     !wpa_s->eap_expected_failure))
@@ -36,11 +54,17 @@ Index: hostapd-2.1/wpa_supplicant/events.c
  
  #ifdef CONFIG_P2P
  	if (deauth && reason_code > 0) {
-Index: hostapd-2.1/wpa_supplicant/wpa_supplicant.c
-===================================================================
---- hostapd-2.1.orig/wpa_supplicant/wpa_supplicant.c
-+++ hostapd-2.1/wpa_supplicant/wpa_supplicant.c
-@@ -227,7 +227,9 @@ static void wpa_supplicant_timeout(void
+ 		if (wpas_p2p_deauth_notif(wpa_s, addr, reason_code, ie, ie_len,
+ 					  locally_generated) > 0) {
+ 			/*
+ 			 * The interface was removed, so cannot continue
+--- a/wpa_supplicant/wpa_supplicant.c
++++ b/wpa_supplicant/wpa_supplicant.c
+@@ -224,15 +224,17 @@ static void wpa_supplicant_timeout(void
+ {
+ 	struct wpa_supplicant *wpa_s = eloop_ctx;
+ 	const u8 *bssid = wpa_s->bssid;
+ 	if (is_zero_ether_addr(bssid))
  		bssid = wpa_s->pending_bssid;
  	wpa_msg(wpa_s, MSG_INFO, "Authentication with " MACSTR " timed out.",
  		MAC2STR(bssid));
@@ -51,7 +75,15 @@ Index: hostapd-2.1/wpa_supplicant/wpa_supplicant.c
  	wpa_sm_notify_disassoc(wpa_s->wpa);
  	wpa_supplicant_deauthenticate(wpa_s, WLAN_REASON_DEAUTH_LEAVING);
  	wpa_s->reassociate = 1;
-@@ -4182,7 +4184,8 @@ void wpas_connection_failed(struct wpa_s
+ 
+ 	/*
+ 	 * If we timed out, the AP or the local radio may be busy.
+ 	 * So, wait a second until scanning again.
+@@ -4215,15 +4217,16 @@ void wpas_connection_failed(struct wpa_s
+ 		 * next. Otherwise, we may as well try this one once more
+ 		 * before allowing other, likely worse, ESSes to be considered.
+ 		 */
+ 		freqs = get_bss_freqs_in_ess(wpa_s);
  		if (freqs) {
  			wpa_dbg(wpa_s, MSG_DEBUG, "Another BSS in this ESS "
  				"has been seen; try it next");
@@ -61,11 +93,23 @@ Index: hostapd-2.1/wpa_supplicant/wpa_supplicant.c
  			/*
  			 * On the next scan, go through only the known channels
  			 * used in this ESS based on previous scans to speed up
-@@ -4436,6 +4439,7 @@ void wpas_clear_temp_disabled(struct wpa
+ 			 * common load balancing use case.
+ 			 */
+ 			os_free(wpa_s->next_scan_freqs);
+ 			wpa_s->next_scan_freqs = freqs;
+@@ -4469,14 +4472,15 @@ void wpas_clear_temp_disabled(struct wpa
+ 			"id=%d ssid=\"%s\"",
+ 			ssid->id, wpa_ssid_txt(ssid->ssid, ssid->ssid_len));
+ 	}
+ 	ssid->disabled_until.sec = 0;
  	ssid->disabled_until.usec = 0;
  	if (clear_failures)
  		ssid->auth_failures = 0;
 +	wpa_s->extra_blacklist_count = 0;
  }
  
+ 
+ int disallowed_bssid(struct wpa_supplicant *wpa_s, const u8 *bssid)
+ {
+ 	size_t i;
  

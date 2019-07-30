@@ -1,215 +1,92 @@
-#!/bin/sh
-
-[ -x /usr/sbin/pppd ] || exit 0
-
-[ -n "$INCLUDE_ONLY" ] || {
-	. /lib/functions.sh
-	. ../netifd-proto.sh
-	init_proto "$@"
+scan_ppp() {
+	config_get ifname "$1" ifname
+	pppdev="${pppdev:-0}"
+	config_get unit "$1" unit
+	[ -z "$unit" ] && {
+		unit="$pppdev"
+		if [ "${ifname%%[0-9]*}" = ppp ]; then
+			unit="${ifname##ppp}"
+			[ "$pppdev" -le "$unit" ] && pppdev="$(($unit + 1))"
+		else
+			pppdev="$(($pppdev + 1))"
+		fi
+		config_set "$1" ifname "ppp$unit"
+		config_set "$1" unit "$unit"
+	}
 }
 
-ppp_generic_init_config() {
-	proto_config_add_string username
-	proto_config_add_string password
-	proto_config_add_string keepalive
-	proto_config_add_int demand
-	proto_config_add_string pppd_options
-	proto_config_add_string 'connect:file'
-	proto_config_add_string 'disconnect:file'
-	proto_config_add_boolean ipv6
-	proto_config_add_boolean authfail
-	proto_config_add_int mtu
-}
+start_pppd() {
+	local cfg="$1"; shift
+	local ifname
 
-ppp_generic_setup() {
-	local config="$1"; shift
+	# make sure the network state references the correct ifname
+	scan_ppp "$cfg"
+	config_get ifname "$cfg" ifname
+	set_interface_ifname "$cfg" "$ifname"
 
-	json_get_vars ipv6 demand keepalive username password pppd_options
-	[ "$ipv6" = 1 ] || ipv6=""
-	if [ "${demand:-0}" -gt 0 ]; then
-		demand="precompiled-active-filter /etc/ppp/filter demand idle $demand"
-	else
-		demand="persist"
-	fi
+	# make sure only one pppd process is started
+	lock "/var/lock/ppp-${cfg}"
+	local pid="$(head -n1 /var/run/ppp-${cfg}.pid 2>/dev/null)"
+	[ -d "/proc/$pid" ] && grep pppd "/proc/$pid/cmdline" 2>/dev/null >/dev/null && {
+		lock -u "/var/lock/ppp-${cfg}"
+		return 0
+	}
 
-	[ -n "$mtu" ] || json_get_var mtu mtu
+	# Workaround: sometimes hotplug2 doesn't deliver the hotplug event for creating
+	# /dev/ppp fast enough to be used here
+	[ -e /dev/ppp ] || mknod /dev/ppp c 108 0
 
-	local interval="${keepalive##*[, ]}"
+	config_get device "$cfg" device
+	config_get unit "$cfg" unit
+	config_get username "$cfg" username
+	config_get password "$cfg" password
+	config_get keepalive "$cfg" keepalive
+
+	config_get connect "$cfg" connect
+	config_get disconnect "$cfg" disconnect
+	config_get pppd_options "$cfg" pppd_options
+	config_get_bool defaultroute "$cfg" defaultroute 1
+	[ "$defaultroute" -eq 1 ] && defaultroute="defaultroute replacedefaultroute" || defaultroute=""
+
+	interval="${keepalive##*[, ]}"
 	[ "$interval" != "$keepalive" ] || interval=5
-	[ -n "$connect" ] || json_get_var connect connect
-	[ -n "$disconnect" ] || json_get_var disconnect disconnect
 
-	proto_run_command "$config" /usr/sbin/pppd \
-		nodetach ipparam "$config" \
-		ifname "${proto:-ppp}-$config" \
+	config_get_bool peerdns "$cfg" peerdns 1 
+	[ "$peerdns" -eq 1 ] && peerdns="usepeerdns" || peerdns="" 
+	
+	config_get demand "$cfg" demand
+	[ -n "$demand" ] && echo "nameserver 1.1.1.1" > /tmp/resolv.conf.auto
+
+	config_get_bool ipv6 "$cfg" ipv6 0
+	[ "$ipv6" -eq 1 ] && ipv6="+ipv6" || ipv6=""
+
+	/usr/sbin/pppd "$@" \
 		${keepalive:+lcp-echo-interval $interval lcp-echo-failure ${keepalive%%[, ]*}} \
-		${ipv6:++ipv6} \
-		nodefaultroute \
-		usepeerdns \
-		$demand maxfail 1 \
+		${demand:+precompiled-active-filter /etc/ppp/filter demand idle }${demand:-persist} \
+		$peerdns \
+		$defaultroute \
 		${username:+user "$username" password "$password"} \
+		unit "$unit" \
+		linkname "$cfg" \
+		ipparam "$cfg" \
 		${connect:+connect "$connect"} \
 		${disconnect:+disconnect "$disconnect"} \
-		ip-up-script /lib/netifd/ppp-up \
-		ipv6-up-script /lib/netifd/ppp-up \
-		ip-down-script /lib/netifd/ppp-down \
-		ipv6-down-script /lib/netifd/ppp-down \
-		${mtu:+mtu $mtu mru $mtu} \
-		"$@" $pppd_options
+		${ipv6} \
+		${pppd_options}
+
+	lock -u "/var/lock/ppp-${cfg}"
 }
 
-ppp_generic_teardown() {
-	local interface="$1"
+setup_interface_ppp() {
+	local iface="$1"
+	local config="$2"
 
-	case "$ERROR" in
-		11|19)
-			proto_notify_error "$interface" AUTH_FAILED
-			json_get_var authfail authfail
-			if [ "${authfail:-0}" -gt 0 ]; then
-				proto_block_restart "$interface"
-			fi
-		;;
-		2)
-			proto_notify_error "$interface" INVALID_OPTIONS
-			proto_block_restart "$interface"
-		;;
-	esac
-	proto_kill_command "$interface"
-}
+	config_get device "$config" device
 
-# PPP on serial device
-
-proto_ppp_init_config() {
-	proto_config_add_string "device"
-	ppp_generic_init_config
-	no_device=1
-	available=1
-}
-
-proto_ppp_setup() {
-	local config="$1"
-
-	json_get_var device device
-	ppp_generic_setup "$config" "$device"
-}
-
-proto_ppp_teardown() {
-	ppp_generic_teardown "$@"
-}
-
-proto_pppoe_init_config() {
-	ppp_generic_init_config
-	proto_config_add_string "ac"
-	proto_config_add_string "service"
-}
-
-proto_pppoe_setup() {
-	local config="$1"
-	local iface="$2"
-
-	for module in slhc ppp_generic pppox pppoe; do
-		/sbin/insmod $module 2>&- >&-
-	done
-
-	json_get_var mtu mtu
-	mtu="${mtu:-1492}"
-
-	json_get_var ac ac
-	json_get_var service service
-
-	ppp_generic_setup "$config" \
-		plugin rp-pppoe.so \
-		${ac:+rp_pppoe_ac "$ac"} \
-		${service:+rp_pppoe_service "$service"} \
-		"nic-$iface"
-}
-
-proto_pppoe_teardown() {
-	ppp_generic_teardown "$@"
-}
-
-proto_pppoa_init_config() {
-	ppp_generic_init_config
-	proto_config_add_int "atmdev"
-	proto_config_add_int "vci"
-	proto_config_add_int "vpi"
-	proto_config_add_string "encaps"
-	no_device=1
-	available=1
-}
-
-proto_pppoa_setup() {
-	local config="$1"
-	local iface="$2"
-
-	for module in slhc ppp_generic pppox pppoatm; do
-		/sbin/insmod $module 2>&- >&-
-	done
-
-	json_get_vars atmdev vci vpi encaps
-
-	case "$encaps" in
-		1|vc) encaps="vc-encaps" ;;
-		*) encaps="llc-encaps" ;;
-	esac
-
-	ppp_generic_setup "$config" \
-		plugin pppoatm.so \
-		${atmdev:+$atmdev.}${vpi:-8}.${vci:-35} \
-		${encaps}
-}
-
-proto_pppoa_teardown() {
-	ppp_generic_teardown "$@"
-}
-
-proto_pptp_init_config() {
-	ppp_generic_init_config
-	proto_config_add_string "server"
-	available=1
-	no_device=1
-}
-
-proto_pptp_setup() {
-	local config="$1"
-	local iface="$2"
-
-	local ip serv_addr server
-	json_get_var server server && {
-		for ip in $(resolveip -t 5 "$server"); do
-			( proto_add_host_dependency "$config" "$ip" )
-			serv_addr=1
-		done
-	}
-	[ -n "$serv_addr" ] || {
-		echo "Could not resolve server address"
-		sleep 5
-		proto_setup_failed "$config"
-		exit 1
-	}
-
-	local load
-	for module in slhc ppp_generic ppp_async ppp_mppe ip_gre gre pptp; do
-		grep -q "^$module " /proc/modules && continue
-		/sbin/insmod $module 2>&- >&-
-		load=1
-	done
-	[ "$load" = "1" ] && sleep 1
-
-	ppp_generic_setup "$config" \
-		plugin pptp.so \
-		pptp_server $server \
-		file /etc/ppp/options.pptp
-}
-
-proto_pptp_teardown() {
-	ppp_generic_teardown "$@"
-}
-
-[ -n "$INCLUDE_ONLY" ] || {
-	add_protocol ppp
-	[ -f /usr/lib/pppd/*/rp-pppoe.so ] && add_protocol pppoe
-	[ -f /usr/lib/pppd/*/pppoatm.so ] && add_protocol pppoa
-	[ -f /usr/lib/pppd/*/pptp.so ] && add_protocol pptp
+	config_get mtu "$config" mtu
+	mtu=${mtu:-1492}
+	start_pppd "$config" \
+		mtu $mtu mru $mtu \
+		"$device"
 }
 

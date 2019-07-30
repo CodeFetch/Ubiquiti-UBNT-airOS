@@ -1,0 +1,40 @@
+Index: mac-telnet-2016-10-11/src/mactelnetd.c
+===================================================================
+--- mac-telnet-2016-10-11.orig/src/mactelnetd.c
++++ mac-telnet-2016-10-11/src/mactelnetd.c
+@@ -89,6 +89,8 @@
+ 
+ #define MT_INTERFACE_LEN 128
+ 
++#define MACTELNETD_MAX_CONNECTIONS 50
++
+ /* Max ~5 pings per second */
+ #define MT_MAXPPS MT_MNDP_BROADCAST_INTERVAL * 5
+ 
+@@ -185,6 +187,15 @@ static void list_remove_connection(struc
+ 	free(conn);
+ }
+ 
++static int list_count_connections(void) {
++	struct mt_connection *p;
++        int count;
++
++        DL_COUNT(connections_head, p, count);
++
++        return count;
++}
++
+ static struct mt_connection *list_find_connection(unsigned short seskey, unsigned char *srcmac) {
+ 	struct mt_connection *p;
+ 
+@@ -723,6 +734,10 @@ static void handle_packet(unsigned char
+ 			break;
+ 
+ 		case MT_PTYPE_SESSIONSTART:
++                        if (list_count_connections() > MACTELNETD_MAX_CONNECTIONS) {
++                                /* Ignore new attempts if max session limit is reached */
++                                break;
++                        }
+ 			curconn = list_find_connection(pkthdr.seskey, (unsigned char *)&(pkthdr.srcaddr));
+ 			if (curconn != NULL) {
+ 				/* Ignore multiple session starts from the same sender, this can be same mac but different interface */

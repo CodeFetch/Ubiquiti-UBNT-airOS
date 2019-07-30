@@ -1,6 +1,10 @@
 --- a/src/utils/os_unix.c
 +++ b/src/utils/os_unix.c
-@@ -9,6 +9,7 @@
+@@ -5,14 +5,15 @@
+  * This software may be distributed under the terms of the BSD license.
+  * See README for more details.
+  */
+ 
  #include "includes.h"
  
  #include <time.h>
@@ -8,7 +12,15 @@
  
  #ifdef ANDROID
  #include <sys/capability.h>
-@@ -154,59 +155,46 @@ int os_gmtime(os_time_t t, struct os_tm
+ #include <linux/prctl.h>
+ #include <private/android_filesystem_config.h>
+ #endif /* ANDROID */
+ 
+@@ -150,67 +151,54 @@ int os_gmtime(os_time_t t, struct os_tm
+ 	tm->hour = tm2->tm_hour;
+ 	tm->day = tm2->tm_mday;
+ 	tm->month = tm2->tm_mon + 1;
+ 	tm->year = tm2->tm_year + 1900;
  	return 0;
  }
  
@@ -95,3 +107,7 @@
  
  	return -0;
  #endif /* defined(__uClinux__) || defined(__sun__) */
+ }
+ 
+ 
+ void os_daemonize_terminate(const char *pid_file)

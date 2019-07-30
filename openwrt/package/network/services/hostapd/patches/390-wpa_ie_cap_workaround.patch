@@ -1,6 +1,10 @@
 --- a/src/common/wpa_common.c
 +++ b/src/common/wpa_common.c
-@@ -975,6 +975,31 @@ const char * wpa_key_mgmt_txt(int key_mg
+@@ -971,23 +971,59 @@ const char * wpa_key_mgmt_txt(int key_mg
+ #endif /* CONFIG_IEEE80211W */
+ 	default:
+ 		return "UNKNOWN";
+ 	}
  }
  
  
@@ -32,7 +36,7 @@
  int wpa_compare_rsn_ie(int ft_initial_assoc,
  		       const u8 *ie1, size_t ie1len,
  		       const u8 *ie2, size_t ie2len)
-@@ -982,8 +1007,19 @@ int wpa_compare_rsn_ie(int ft_initial_as
+ {
  	if (ie1 == NULL || ie2 == NULL)
  		return -1;
  
@@ -54,3 +58,7 @@
  
  #ifdef CONFIG_IEEE80211R
  	if (ft_initial_assoc) {
+ 		struct wpa_ie_data ie1d, ie2d;
+ 		/*
+ 		 * The PMKID-List in RSN IE is different between Beacon/Probe
+ 		 * Response/(Re)Association Request frames and EAPOL-Key

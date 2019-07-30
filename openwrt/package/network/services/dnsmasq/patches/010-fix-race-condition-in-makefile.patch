@@ -1,0 +1,19 @@
+Based on changes from:
+https://github.com/imp/dnsmasq/commit/d8dbd903d024f84a149dac2f8a674a68dfed47a3#diff-b67911656ef5d18c4ae36cb6741b7965
+
+--- a/Makefile
++++ b/Makefile
+@@ -123,10 +123,12 @@ $(BUILDDIR):
+ $(objs:.o=.c) $(hdrs):
+ 	ln -s $(top)/$(SRC)/$@ .
+ 
++$(objs): .configured $(hdrs)
++
+ .c.o:
+ 	$(CC) $(CFLAGS) $(COPTS) $(i18n) $(build_cflags) $(RPM_OPT_FLAGS) -c $<	
+ 
+-dnsmasq : .configured $(hdrs) $(objs) 
++dnsmasq : $(objs)
+ 	$(CC) $(LDFLAGS) -o $@ $(objs) $(build_libs) $(LIBS) 
+ 
+ dnsmasq.pot : $(objs:.o=.c) $(hdrs)

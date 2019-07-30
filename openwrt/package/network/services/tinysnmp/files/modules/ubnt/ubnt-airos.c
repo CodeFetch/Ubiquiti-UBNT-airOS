@@ -119,10 +119,10 @@ static int update_radio_stats(struct odb **odb, const airos_stats_t* stats) {
 static int update_airmax_stats(struct odb **odb, const airos_stats_t* stats) {
 	const airmax_stats_t* st = &stats->airmax_stats;
 	int ifindex = ifcache_get_ifindex(st->ifname);
-	log_printf(LOG_VERBOSE, "updating airmax statistics of %s (ifindex: %d)\n", st->ifname, ifindex);
-
 	uint32_t table[] = { 12, 43, 6, 1, 4, 1, 41112, 1, 4, 6, 1, 0, 1 };
 	const uint8_t idx_col = 11;
+
+	log_printf(LOG_VERBOSE, "updating airmax statistics of %s (ifindex: %d)\n", st->ifname, ifindex);
 
 	set_value(1, BER_INTEGER, &ifindex);
 	set_value(2, BER_INTEGER, &st->status);
@@ -130,6 +130,9 @@ static int update_airmax_stats(struct odb **odb, const airos_stats_t* stats) {
 	set_value(4, BER_INTEGER, &st->capacity);
 	set_value(5, BER_INTEGER, &st->priority);
 	set_value(6, BER_INTEGER, &st->no_ack);
+	set_value(7, BER_INTEGER, &st->use);
+	set_value(8, BER_INTEGER, &st->gps_sync);
+	set_value(9, BER_INTEGER, &st->fixed_frame);
 
 	return 0;
 }
@@ -283,6 +286,38 @@ static int update_host_stats(struct odb **odb, const airos_stats_t* stats) {
 	return 0;
 }
 
+static int update_gps_stats(struct odb **odb, const airos_stats_t* stats) {
+	const gps_stats_t* st = &stats->gps;
+	uint32_t table[] = { 11, 43, 6, 1, 4, 1, 41112, 1, 4, 9, 0, 0 };
+	const uint8_t idx_col = 10;
+	octet_string_t str;
+	char lat[20] = { 0 };
+	char lon[20] = { 0 };
+	char altm[10] = { 0 };
+	char altf[10] = { 0 };
+	char dop[10] = { 0 };
+
+	log_printf(LOG_VERBOSE, "updating gps info\n");
+
+	sprintf(lat, "%d.%06d", (int)st->lat, ((int)(st->lat*1000000)%1000000));
+	sprintf(lon, "%d.%06d", (int)st->lon, ((int)(st->lon*1000000)%1000000));
+	sprintf(altm, "%d.%02d", (int)st->alt, ((int)(st->alt*100)%100));
+	sprintf(altf, "%d.%02d", (int)(st->alt * 3.28084), ((int)((st->alt * 3.28084)*100)%100));
+	sprintf(dop, "%d.%01d", (int)st->dop, ((int)(st->dop*10)%10));
+
+	set_value(1, BER_INTEGER, &st->status);
+	set_value(2, BER_INTEGER, &st->dimensions);
+	set_str_value(3, lat);
+	set_str_value(4, lon);
+	set_str_value(5, altm);
+	set_str_value(6, altf);
+	set_value(7, BER_INTEGER, &st->sat_in_view);
+	set_value(8, BER_INTEGER, &st->sat_tracked);
+	set_str_value(9, dop);
+
+	return 0;
+}
+
 
 static int update_airos_stats(struct odb **odb) {
 	const airos_stats_t* stats = airos_get_stats();
@@ -307,6 +342,9 @@ static int update_airos_stats(struct odb **odb) {
 	if (rc) return rc;
 
 	rc = update_host_stats(odb, stats);
+	if (rc) return rc;
+
+	rc = update_gps_stats(odb, stats);
 	return rc;
 }
 

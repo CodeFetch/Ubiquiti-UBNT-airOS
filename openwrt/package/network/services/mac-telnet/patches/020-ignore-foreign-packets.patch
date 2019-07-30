@@ -1,0 +1,13 @@
+Index: mac-telnet-2016-10-11/src/mactelnetd.c
+===================================================================
+--- mac-telnet-2016-10-11.orig/src/mactelnetd.c
++++ mac-telnet-2016-10-11/src/mactelnetd.c
+@@ -687,7 +687,7 @@ static void handle_packet(unsigned char
+ 	parse_packet(data, &pkthdr);
+ 
+ 	/* Drop packets not belonging to us */
+-	if ((interface = find_socket(pkthdr.dstaddr)) < 0) {
++	if ((interface = find_socket(pkthdr.dstaddr)) <= 0) {
+ 		return;
+ 	}
+ 

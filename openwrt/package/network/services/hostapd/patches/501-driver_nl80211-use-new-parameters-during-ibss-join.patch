@@ -10,7 +10,11 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
 
 --- a/src/drivers/driver_nl80211.c
 +++ b/src/drivers/driver_nl80211.c
-@@ -8304,7 +8304,7 @@ static int wpa_driver_nl80211_ibss(struc
+@@ -8300,15 +8300,15 @@ nla_put_failure:
+ }
+ 
+ 
+ static int wpa_driver_nl80211_ibss(struct wpa_driver_nl80211_data *drv,
  				   struct wpa_driver_associate_params *params)
  {
  	struct nl_msg *msg;
@@ -19,7 +23,15 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
  	int count = 0;
  
  	wpa_printf(MSG_DEBUG, "nl80211: Join IBSS (ifindex=%d)", drv->ifindex);
-@@ -8337,6 +8337,37 @@ retry:
+ 
+ 	if (wpa_driver_nl80211_set_mode(drv->first_bss,
+ 					NL80211_IFTYPE_ADHOC)) {
+ 		wpa_printf(MSG_INFO, "nl80211: Failed to set interface into "
+@@ -8333,14 +8333,45 @@ retry:
+ 		params->ssid);
+ 	os_memcpy(drv->ssid, params->ssid, params->ssid_len);
+ 	drv->ssid_len = params->ssid_len;
+ 
  	wpa_printf(MSG_DEBUG, "  * freq=%d", params->freq);
  	NLA_PUT_U32(msg, NL80211_ATTR_WIPHY_FREQ, params->freq);
  
@@ -57,3 +69,7 @@ Signed-hostap: Antonio Quartulli <ordex@autistici.org>
  	ret = nl80211_set_conn_keys(params, msg);
  	if (ret)
  		goto nla_put_failure;
+ 
+ 	if (params->bssid && params->fixed_bssid) {
+ 		wpa_printf(MSG_DEBUG, "  * BSSID=" MACSTR,
+ 			   MAC2STR(params->bssid));

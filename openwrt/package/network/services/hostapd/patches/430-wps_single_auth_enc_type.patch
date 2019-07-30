@@ -1,6 +1,10 @@
 --- a/src/ap/wps_hostapd.c
 +++ b/src/ap/wps_hostapd.c
-@@ -1083,11 +1083,9 @@ int hostapd_init_wps(struct hostapd_data
+@@ -1079,27 +1079,25 @@ int hostapd_init_wps(struct hostapd_data
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_PSK)
+ 			wps->auth_types |= WPS_AUTH_WPA2PSK;
+ 		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X)
+ 			wps->auth_types |= WPS_AUTH_WPA2;
  
  		if (conf->rsn_pairwise & WPA_CIPHER_CCMP)
  			wps->encr_types |= WPS_ENCR_AES;
@@ -14,7 +18,7 @@
  		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_PSK)
  			wps->auth_types |= WPS_AUTH_WPAPSK;
  		if (conf->wpa_key_mgmt & WPA_KEY_MGMT_IEEE8021X)
-@@ -1095,7 +1093,7 @@ int hostapd_init_wps(struct hostapd_data
+ 			wps->auth_types |= WPS_AUTH_WPA;
  
  		if (conf->wpa_pairwise & WPA_CIPHER_CCMP)
  			wps->encr_types |= WPS_ENCR_AES;
@@ -23,3 +27,7 @@
  			wps->encr_types |= WPS_ENCR_TKIP;
  	}
  
+ 	if (conf->ssid.security_policy == SECURITY_PLAINTEXT) {
+ 		wps->encr_types |= WPS_ENCR_NONE;
+ 		wps->auth_types |= WPS_AUTH_OPEN;
+ 	} else if (conf->ssid.security_policy == SECURITY_STATIC_WEP) {

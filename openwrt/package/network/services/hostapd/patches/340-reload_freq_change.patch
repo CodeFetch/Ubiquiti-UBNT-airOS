@@ -1,6 +1,10 @@
 --- a/src/ap/hostapd.c
 +++ b/src/ap/hostapd.c
-@@ -68,6 +68,16 @@ static void hostapd_reload_bss(struct ho
+@@ -64,14 +64,24 @@ static void hostapd_reload_bss(struct ho
+ 	struct hostapd_ssid *ssid;
+ 
+ #ifndef CONFIG_NO_RADIUS
+ 	radius_client_reconfig(hapd->radius, hapd->conf->radius);
  #endif /* CONFIG_NO_RADIUS */
  
  	ssid = &hapd->conf->ssid;
@@ -17,3 +21,7 @@
  	if (!ssid->wpa_psk_set && ssid->wpa_psk && !ssid->wpa_psk->next &&
  	    ssid->wpa_passphrase_set && ssid->wpa_passphrase) {
  		/*
+ 		 * Force PSK to be derived again since SSID or passphrase may
+ 		 * have changed.
+ 		 */
+ 		os_free(ssid->wpa_psk);

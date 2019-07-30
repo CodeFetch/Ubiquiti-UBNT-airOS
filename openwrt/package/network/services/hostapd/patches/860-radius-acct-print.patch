@@ -1,6 +1,10 @@
 --- a/src/ap/accounting.c
 +++ b/src/ap/accounting.c
-@@ -206,11 +206,6 @@ void accounting_sta_start(struct hostapd
+@@ -202,27 +202,27 @@ void accounting_sta_start(struct hostapd
+ {
+ 	struct radius_msg *msg;
+ 	int interval;
+ 
  	if (sta->acct_session_started)
  		return;
  
@@ -12,7 +16,8 @@
  	os_get_reltime(&sta->acct_session_start);
  	sta->last_rx_bytes = sta->last_tx_bytes = 0;
  	sta->acct_input_gigawords = sta->acct_output_gigawords = 0;
-@@ -219,6 +214,11 @@ void accounting_sta_start(struct hostapd
+ 	hostapd_drv_sta_clear_stats(hapd, sta->addr);
+ 
  	if (!hapd->conf->radius->acct_server)
  		return;
  
@@ -24,3 +29,7 @@
  	if (sta->acct_interim_interval)
  		interval = sta->acct_interim_interval;
  	else
+ 		interval = ACCT_DEFAULT_UPDATE_INTERVAL;
+ 	eloop_register_timeout(interval, 0, accounting_interim_update,
+ 			       hapd, sta);
+ 

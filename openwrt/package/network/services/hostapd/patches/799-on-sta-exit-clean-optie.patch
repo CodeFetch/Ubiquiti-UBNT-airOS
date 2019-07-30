@@ -1,6 +1,10 @@
 --- a/src/drivers/driver_wext.c
 +++ b/src/drivers/driver_wext.c
-@@ -36,7 +36,7 @@ static int wpa_driver_wext_get_range(voi
+@@ -32,15 +32,15 @@
+ #include "driver_wext.h"
+ 
+ static int wpa_driver_wext_flush_pmkid(void *priv);
+ static int wpa_driver_wext_get_range(void *priv);
  static int wpa_driver_wext_finish_drv_init(struct wpa_driver_wext_data *drv);
  static void wpa_driver_wext_disconnect(struct wpa_driver_wext_data *drv);
  static int wpa_driver_wext_set_auth_alg(void *priv, int auth_alg);
@@ -9,7 +13,15 @@
  
  int wpa_driver_wext_set_auth_param(struct wpa_driver_wext_data *drv,
  				   int idx, u32 value)
-@@ -949,6 +949,8 @@ void wpa_driver_wext_deinit(void *priv)
+ {
+ 	struct iwreq iwr;
+ 	int ret = 0;
+ 
+@@ -945,14 +945,16 @@ static int wpa_driver_wext_finish_drv_in
+  * private data buffer if one was allocated in wpa_driver_wext_init().
+  */
+ void wpa_driver_wext_deinit(void *priv)
+ {
  	struct wpa_driver_wext_data *drv = priv;
  
  	wpa_driver_wext_set_auth_param(drv, IW_AUTH_WPA_ENABLED, 0);
@@ -18,3 +30,7 @@
  
  	eloop_cancel_timeout(wpa_driver_wext_scan_timeout, drv, drv->ctx);
  
+ 	/*
+ 	 * Clear possibly configured driver parameters in order to make it
+ 	 * easier to use the driver after wpa_supplicant has been terminated.
+ 	 */

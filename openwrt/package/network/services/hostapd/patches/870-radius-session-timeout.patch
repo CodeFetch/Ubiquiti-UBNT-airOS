@@ -1,6 +1,10 @@
 --- a/src/ap/ieee802_1x.c
 +++ b/src/ap/ieee802_1x.c
-@@ -1317,6 +1317,7 @@ ieee802_1x_receive_auth(struct radius_ms
+@@ -1313,14 +1313,15 @@ ieee802_1x_receive_auth(struct radius_ms
+ 				       "ignored too small "
+ 				       "Acct-Interim-Interval %d",
+ 				       acct_interim_interval);
+ 		} else
  			sta->acct_interim_interval = acct_interim_interval;
  	}
  
@@ -8,7 +12,31 @@
  
  	switch (hdr->code) {
  	case RADIUS_CODE_ACCESS_ACCEPT:
-@@ -2115,7 +2116,8 @@ static void ieee802_1x_finished(struct h
+ 		if (sta->ssid->dynamic_vlan == DYNAMIC_VLAN_DISABLED)
+ 			sta->vlan_id = 0;
+ #ifndef CONFIG_NO_VLAN
+ 		else {
+@@ -1347,14 +1348,15 @@ ieee802_1x_receive_auth(struct radius_ms
+ 		if (ap_sta_bind_vlan(hapd, sta, old_vlanid) < 0)
+ 			break;
+ 
+ 		/* RFC 3580, Ch. 3.17 */
+ 		if (session_timeout_set && termination_action ==
+ 		    RADIUS_TERMINATION_ACTION_RADIUS_REQUEST) {
+ 			sm->reAuthPeriod = session_timeout;
++			sm->reAuthEnabled = TRUE;
+ 		} else if (session_timeout_set)
+ 			ap_sta_session_timeout(hapd, sta, session_timeout);
+ 
+ 		sm->eap_if->aaaSuccess = TRUE;
+ 		override_eapReq = 1;
+ 		ieee802_1x_get_keys(hapd, sta, msg, req, shared_secret,
+ 				    shared_secret_len);
+@@ -2111,15 +2113,16 @@ static void ieee802_1x_finished(struct h
+ 	const u8 *key;
+ 	size_t len;
+ 	/* TODO: get PMKLifetime from WPA parameters */
+ 	static const int dot11RSNAConfigPMKLifetime = 43200;
  
  	key = ieee802_1x_get_key(sta->eapol_sm, &len);
  	if (success && key && len >= PMK_LEN &&
@@ -18,9 +46,17 @@
  			       sta->eapol_sm) == 0) {
  		hostapd_logger(hapd, sta->addr, HOSTAPD_MODULE_WPA,
  			       HOSTAPD_LEVEL_DEBUG,
+ 			       "Added PMKSA cache entry (IEEE 802.1X)");
+ 	}
+ 
+ 	if (!success) {
 --- a/src/ap/pmksa_cache_auth.c
 +++ b/src/ap/pmksa_cache_auth.c
-@@ -114,9 +114,9 @@ static void pmksa_cache_set_expiration(s
+@@ -110,17 +110,17 @@ static void pmksa_cache_set_expiration(s
+ 	struct os_reltime now;
+ 
+ 	eloop_cancel_timeout(pmksa_cache_expire, pmksa, NULL);
+ 	if (pmksa->pmksa == NULL)
  		return;
  	os_get_reltime(&now);
  	sec = pmksa->pmksa->expiration - now.sec;
@@ -33,7 +69,15 @@
  }
  
  
-@@ -214,6 +214,8 @@ static void pmksa_cache_link_entry(struc
+ static void pmksa_cache_from_eapol_data(struct rsn_pmksa_cache_entry *entry,
+ 					struct eapol_state_machine *eapol)
+ {
+ 	if (eapol == NULL)
+@@ -210,14 +210,16 @@ static void pmksa_cache_link_entry(struc
+ 
+ 	pmksa->pmksa_count++;
+ 	if (prev == NULL)
+ 		pmksa_cache_set_expiration(pmksa);
  	wpa_printf(MSG_DEBUG, "RSN: added PMKSA cache entry for " MACSTR,
  		   MAC2STR(entry->spa));
  	wpa_hexdump(MSG_DEBUG, "RSN: added PMKID", entry->pmkid, PMKID_LEN);
@@ -42,9 +86,17 @@
  }
  
  
+ /**
+  * pmksa_cache_auth_add - Add a PMKSA cache entry
+  * @pmksa: Pointer to PMKSA cache data from pmksa_cache_auth_init()
+  * @pmk: The new pairwise master key
 --- a/src/ap/sta_info.h
 +++ b/src/ap/sta_info.h
-@@ -129,6 +129,8 @@ struct sta_info {
+@@ -125,14 +125,16 @@ struct sta_info {
+ 	struct wpabuf *hs20_ie; /* HS 2.0 IE from (Re)Association Request */
+ 
+ 	struct os_reltime connected_time;
+ 
  #ifdef CONFIG_SAE
  	struct sae_data *sae;
  #endif /* CONFIG_SAE */
@@ -53,3 +105,7 @@
  };
  
  
+ /* Default value for maximum station inactivity. After AP_MAX_INACTIVITY has
+  * passed since last received frame from the station, a nullfunc data frame is
+  * sent to the station. If this frame is not acknowledged and no other frames
+  * have been received, the station will be disassociated after
